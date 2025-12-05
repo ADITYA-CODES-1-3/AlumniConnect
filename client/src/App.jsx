@@ -2,17 +2,19 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
-// Import All Pages
+// --- IMPORT ALL PAGES ---
+import Home from './pages/Home'; // Landing Page
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import AdminDashboard from './pages/AdminDashboard'; 
-import PrivateRoute from './components/PrivateRoute';
+import AdminDashboard from './pages/AdminDashboard';
 import Jobs from './pages/Jobs';
 import PostJob from './pages/PostJob';
-import Profile from './pages/Profile'; 
-import Home from './pages/Home';
-import Mentorship from './pages/Mentorship'; // 1. IMPORT REAL PAGE
+import Profile from './pages/Profile';
+import Mentorship from './pages/Mentorship';
+
+// --- IMPORT COMPONENTS ---
+import PrivateRoute from './components/PrivateRoute';
 
 function App() {
   return (
@@ -21,14 +23,23 @@ function App() {
       
       <Routes>
         
-        {/* --- PUBLIC ROUTES --- */}
+        {/* ============================== */}
+        {/* PUBLIC ROUTES (Open)      */}
+        {/* ============================== */}
+        
+        {/* Root URL -> Landing Page (MUKKIYAM) */}
         <Route path="/" element={<Home />} />
+        
+        {/* Auth Pages */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
-        {/* --- PROTECTED ROUTES (Requires Login) --- */}
         
-        {/* 1. Student/Alumni Dashboard */}
+        {/* ============================== */}
+        {/* PROTECTED ROUTES (Locked)   */}
+        {/* ============================== */}
+        
+        {/* 1. Dashboard */}
         <Route 
           path="/dashboard" 
           element={
@@ -48,7 +59,7 @@ function App() {
           } 
         />
 
-        {/* 3. Jobs Module */}
+        {/* 3. Job Portal */}
         <Route 
           path="/jobs" 
           element={
@@ -66,7 +77,7 @@ function App() {
           } 
         />
 
-        {/* 4. Profile Module */}
+        {/* 4. Profile Section */}
         <Route 
           path="/profile" 
           element={
@@ -76,7 +87,7 @@ function App() {
           } 
         />
 
-        {/* 5. Mentorship Module (REAL PAGE NOW) */}
+        {/* 5. Mentorship System */}
         <Route 
           path="/mentorship" 
           element={

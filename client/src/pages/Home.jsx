@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Briefcase, Calendar, ArrowRight, ShieldCheck, GraduationCap, ChevronRight } from 'lucide-react';
+import { Users, Briefcase, Calendar, ArrowRight, ChevronRight, ShieldCheck } from 'lucide-react';
 // IMPORTANT: Ensure logo.png is in client/src/assets/ folder
 import logo from '../assets/logo.png'; 
 
@@ -16,16 +16,23 @@ const Home = () => {
         justifyContent: 'space-between', 
         alignItems: 'center', 
         padding: '15px 6%', 
-        background: 'rgba(255, 255, 255, 0.9)', 
+        background: 'rgba(255, 255, 255, 0.95)', 
         backdropFilter: 'blur(15px)',
         position: 'sticky',
         top: 0,
         zIndex: 1000,
-        borderBottom: '1px solid rgba(0,0,0,0.03)',
+        borderBottom: '1px solid rgba(0,0,0,0.05)',
         boxShadow: '0 4px 30px rgba(0,0,0,0.02)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }} onClick={() => navigate('/')}>
-          <img src={logo} alt="AlumniConnect" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => navigate('/')}>
+          {/* LOGO IMAGE */}
+          <img 
+            src={logo} 
+            alt="AlumniConnect Logo" 
+            style={{ width: '45px', height: '45px', objectFit: 'contain' }} 
+            onError={(e) => { e.target.style.display='none'; }} // Hide if broken
+          />
+          {/* Text Logo */}
           <h2 style={{ margin: 0, color: '#0f284e', fontWeight: '800', fontSize: '24px', letterSpacing: '-0.5px' }}>
             Alumni<span style={{ color: '#d4af37' }}>Connect</span>
           </h2>
@@ -35,25 +42,25 @@ const Home = () => {
           <button 
             onClick={() => navigate('/login')} 
             style={{ 
-              padding: '12px 30px', background: 'transparent', color: '#0f284e', 
-              fontWeight: '700', fontSize: '16px', border: 'none', 
-              cursor: 'pointer', transition: 'color 0.3s' 
+              padding: '10px 25px', background: 'transparent', color: '#0f284e', 
+              fontWeight: '700', fontSize: '15px', border: '2px solid transparent', 
+              cursor: 'pointer', transition: 'all 0.3s', borderRadius: '8px'
             }}
-            onMouseEnter={(e) => e.target.style.color = '#d4af37'}
-            onMouseLeave={(e) => e.target.style.color = '#0f284e'}
+            onMouseEnter={(e) => { e.target.style.borderColor = '#0f284e'; }}
+            onMouseLeave={(e) => { e.target.style.borderColor = 'transparent'; }}
           >
             Login
           </button>
           <button 
             onClick={() => navigate('/register')} 
             style={{ 
-              padding: '12px 30px', background: '#0f284e', border: 'none', 
+              padding: '10px 30px', background: '#0f284e', border: 'none', 
               color: 'white', borderRadius: '50px', fontWeight: 'bold', 
               cursor: 'pointer', boxShadow: '0 8px 20px rgba(15, 40, 78, 0.25)', 
-              transition: 'all 0.3s', fontSize: '16px' 
+              transition: 'all 0.3s', fontSize: '15px' 
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-3px)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
               e.currentTarget.style.boxShadow = '0 12px 25px rgba(15, 40, 78, 0.35)';
             }}
             onMouseLeave={(e) => {
@@ -69,7 +76,7 @@ const Home = () => {
       {/* 2. Massive Hero Section */}
       <header style={{ 
         textAlign: 'center', 
-        padding: '120px 20px 140px', 
+        padding: '100px 20px 120px', 
         background: 'radial-gradient(circle at 50% 50%, #fcfcfc 0%, #f1f5f9 100%)',
         position: 'relative',
         overflow: 'hidden'
@@ -78,21 +85,22 @@ const Home = () => {
         <div style={{ position: 'absolute', top: '-30%', right: '-10%', width: '600px', height: '600px', background: 'rgba(212,175,55,0.05)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }}></div>
         <div style={{ position: 'absolute', bottom: '-20%', left: '-10%', width: '500px', height: '500px', background: 'rgba(15,40,78,0.05)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }}></div>
 
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: '1100px', margin: '0 auto' }}>
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: '1000px', margin: '0 auto' }}>
           
           <div style={{ 
-            display: 'inline-block', padding: '10px 20px', background: '#e0f2fe', color: '#0369a1', 
-            borderRadius: '30px', fontSize: '14px', fontWeight: '800', marginBottom: '35px', 
-            letterSpacing: '1px', textTransform: 'uppercase', boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
+            display: 'inline-flex', alignItems: 'center', gap: '8px', 
+            padding: '8px 16px', background: '#e0f2fe', color: '#0369a1', 
+            borderRadius: '30px', fontSize: '13px', fontWeight: '800', marginBottom: '30px', 
+            letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
           }}>
-            🎓 The Official Alumni Portal
+            <ShieldCheck size={16} /> The Official Alumni Portal
           </div>
           
           {/* BIGGER HEADER TEXT */}
           <h1 style={{ 
-            fontSize: '72px', 
+            fontSize: '64px', 
             color: '#0f284e', 
-            marginBottom: '30px', 
+            marginBottom: '25px', 
             lineHeight: '1.1', 
             fontWeight: '900', 
             letterSpacing: '-2px' 
@@ -111,29 +119,29 @@ const Home = () => {
           </h1>
           
           <p style={{ 
-            fontSize: '22px', 
+            fontSize: '20px', 
             color: '#555', 
-            marginBottom: '60px', 
-            maxWidth: '750px', 
-            margin: '0 auto 60px', 
+            marginBottom: '50px', 
+            maxWidth: '700px', 
+            margin: '0 auto 50px', 
             lineHeight: '1.6',
             fontWeight: '400'
           }}>
             Reconnect with seniors, mentor juniors, find exclusive job opportunities, and build a lasting legacy with your institution.
           </p>
           
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '25px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
             <button 
               onClick={() => navigate('/register')} 
               style={{ 
-                padding: '20px 50px', fontSize: '18px', background: '#d4af37', 
-                color: '#0f284e', border: 'none', borderRadius: '15px', 
+                padding: '18px 45px', fontSize: '18px', background: '#d4af37', 
+                color: '#0f284e', border: 'none', borderRadius: '12px', 
                 fontWeight: 'bold', cursor: 'pointer', display: 'flex', 
-                alignItems: 'center', gap: '12px', transition: 'all 0.3s', 
+                alignItems: 'center', gap: '10px', transition: 'all 0.3s', 
                 boxShadow: '0 15px 30px rgba(212, 175, 55, 0.3)' 
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.transform = 'translateY(-3px)';
                 e.currentTarget.style.boxShadow = '0 20px 40px rgba(212, 175, 55, 0.4)';
               }}
               onMouseLeave={(e) => {
@@ -141,13 +149,13 @@ const Home = () => {
                 e.currentTarget.style.boxShadow = '0 15px 30px rgba(212, 175, 55, 0.3)';
               }}
             >
-              Get Started Now <ArrowRight size={24} />
+              Get Started <ArrowRight size={20} />
             </button>
             <button 
               onClick={() => navigate('/login')}
               style={{ 
-                padding: '20px 45px', fontSize: '18px', background: 'white', 
-                color: '#0f284e', border: '2px solid #e5e7eb', borderRadius: '15px', 
+                padding: '18px 40px', fontSize: '18px', background: 'white', 
+                color: '#0f284e', border: '2px solid #e5e7eb', borderRadius: '12px', 
                 fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s' 
               }}
               onMouseEnter={(e) => { 
@@ -166,49 +174,49 @@ const Home = () => {
       </header>
 
       {/* 3. Stats Section (Floating Bar) */}
-      <div style={{ maxWidth: '1200px', margin: '-70px auto 0', position: 'relative', zIndex: 10, padding: '0 20px' }}>
+      <div style={{ maxWidth: '1100px', margin: '-60px auto 0', position: 'relative', zIndex: 10, padding: '0 20px' }}>
         <div style={{ 
-          background: '#0f284e', padding: '50px', borderRadius: '24px', 
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          background: '#0f284e', padding: '40px', borderRadius: '20px', 
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
           textAlign: 'center', color: 'white', boxShadow: '0 20px 50px rgba(15, 40, 78, 0.3)',
           border: '1px solid rgba(255,255,255,0.1)'
         }}>
           <div style={{ borderRight: '1px solid rgba(255,255,255,0.1)' }}>
-            <h2 style={{ fontSize: '56px', fontWeight: 'bold', margin: 0, color: '#d4af37' }}>5000+</h2>
-            <p style={{ margin: '10px 0 0', opacity: 0.8, fontSize: '16px', letterSpacing: '2px', fontWeight: '600' }}>ALUMNI CONNECTED</p>
+            <h2 style={{ fontSize: '48px', fontWeight: 'bold', margin: 0, color: '#d4af37' }}>5000+</h2>
+            <p style={{ margin: '10px 0 0', opacity: 0.8, fontSize: '14px', letterSpacing: '2px', fontWeight: '600' }}>ALUMNI CONNECTED</p>
           </div>
           <div style={{ borderRight: '1px solid rgba(255,255,255,0.1)' }}>
-            <h2 style={{ fontSize: '56px', fontWeight: 'bold', margin: 0, color: '#d4af37' }}>120+</h2>
-            <p style={{ margin: '10px 0 0', opacity: 0.8, fontSize: '16px', letterSpacing: '2px', fontWeight: '600' }}>TOP COMPANIES</p>
+            <h2 style={{ fontSize: '48px', fontWeight: 'bold', margin: 0, color: '#d4af37' }}>120+</h2>
+            <p style={{ margin: '10px 0 0', opacity: 0.8, fontSize: '14px', letterSpacing: '2px', fontWeight: '600' }}>TOP COMPANIES</p>
           </div>
           <div>
-            <h2 style={{ fontSize: '56px', fontWeight: 'bold', margin: 0, color: '#d4af37' }}>50+</h2>
-            <p style={{ margin: '10px 0 0', opacity: 0.8, fontSize: '16px', letterSpacing: '2px', fontWeight: '600' }}>YEARLY EVENTS</p>
+            <h2 style={{ fontSize: '48px', fontWeight: 'bold', margin: 0, color: '#d4af37' }}>50+</h2>
+            <p style={{ margin: '10px 0 0', opacity: 0.8, fontSize: '14px', letterSpacing: '2px', fontWeight: '600' }}>YEARLY EVENTS</p>
           </div>
         </div>
       </div>
 
       {/* 4. Features Grid - Clean & Spacious */}
-      <section style={{ padding: '140px 20px', background: '#ffffff' }}>
-        <div style={{ maxWidth: '1300px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '80px' }}>
-            <h2 style={{ fontSize: '42px', color: '#0f284e', fontWeight: '900', marginBottom: '15px' }}>Why Join AlumniConnect?</h2>
-            <p style={{ fontSize: '20px', color: '#666', maxWidth: '700px', margin: '0 auto' }}>Unlock the power of your institution's global network with tools designed for your growth.</p>
+      <section style={{ padding: '120px 20px', background: '#ffffff' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '70px' }}>
+            <h2 style={{ fontSize: '36px', color: '#0f284e', fontWeight: '900', marginBottom: '15px' }}>Why Join AlumniConnect?</h2>
+            <p style={{ fontSize: '18px', color: '#666', maxWidth: '600px', margin: '0 auto' }}>Unlock the power of your institution's global network with tools designed for your growth.</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '40px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
             <FeatureCard 
-              icon={<Briefcase size={40} />} 
+              icon={<Briefcase size={36} />} 
               title="Exclusive Job Portal" 
               desc="Access high-paying jobs and internships posted directly by alumni working in top MNCs like Google and Zoho." 
             />
             <FeatureCard 
-              icon={<Users size={40} />} 
+              icon={<Users size={36} />} 
               title="1-on-1 Mentorship" 
               desc="Book private sessions with seniors for career guidance, resume reviews, and mock interviews to crack your dream job." 
             />
             <FeatureCard 
-              icon={<Calendar size={40} />} 
+              icon={<Calendar size={36} />} 
               title="Reunions & Events" 
               desc="Never miss a college event. RSVP for tech talks, workshops, and alumni meetups happening near you." 
             />
@@ -216,19 +224,33 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 5. Footer - Minimalist */}
-      <footer style={{ padding: '80px 20px', background: '#0b1e3b', color: 'white', textAlign: 'center', borderTop: '6px solid #d4af37' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', marginBottom: '30px' }}>
-          <div style={{ background: 'white', borderRadius: '50%', padding: '8px', boxShadow: '0 0 20px rgba(255,255,255,0.1)' }}>
-             <img src={logo} alt="Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-          </div>
-          <h3 style={{ margin: 0, color: 'white', fontSize: '28px', fontWeight: 'bold' }}>AlumniConnect</h3>
-        </div>
-        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '16px', marginBottom: '30px' }}>&copy; 2025 AlumniConnect. Designed for Excellence.</p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', fontSize: '16px', color: '#d4af37', fontWeight: 'bold' }}>
-            <span style={{ cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={(e)=>e.target.style.color='white'} onMouseLeave={(e)=>e.target.style.color='#d4af37'}>Privacy Policy</span>
-            <span style={{ cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={(e)=>e.target.style.color='white'} onMouseLeave={(e)=>e.target.style.color='#d4af37'}>Terms of Service</span>
-            <span style={{ cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={(e)=>e.target.style.color='white'} onMouseLeave={(e)=>e.target.style.color='#d4af37'}>Contact Support</span>
+      {/* 5. Footer - Compact & Professional */}
+      <footer style={{ background: '#0b1e3b', color: 'white', borderTop: '4px solid #d4af37' }}>
+        <div style={{ 
+            maxWidth: '1200px', margin: '0 auto', padding: '40px 30px', 
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+            flexWrap: 'wrap', gap: '20px' 
+        }}>
+            
+            {/* Left: Brand Identity & Copyright */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ background: 'white', borderRadius: '50%', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img src={logo} alt="Logo" style={{ width: '24px', height: '24px' }} onError={(e) => e.target.style.display='none'} />
+                    </div>
+                    <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', letterSpacing: '-0.5px' }}>AlumniConnect</h3>
+                </div>
+                <p style={{ margin: 0, color: 'rgba(255,255,255,0.5)', fontSize: '13px', marginLeft: '4px' }}>
+                    &copy; 2025 AlumniConnect. All rights reserved.
+                </p>
+            </div>
+
+            {/* Right: Legal & Support Links */}
+            <div style={{ display: 'flex', gap: '30px', fontSize: '14px', fontWeight: '600', color: '#d4af37' }}>
+                <span style={{ cursor: 'pointer', transition: 'opacity 0.2s' }} onMouseEnter={(e)=>e.target.style.opacity='0.8'} onMouseLeave={(e)=>e.target.style.opacity='1'}>Privacy Policy</span>
+                <span style={{ cursor: 'pointer', transition: 'opacity 0.2s' }} onMouseEnter={(e)=>e.target.style.opacity='0.8'} onMouseLeave={(e)=>e.target.style.opacity='1'}>Terms of Service</span>
+                <span style={{ cursor: 'pointer', transition: 'opacity 0.2s' }} onMouseEnter={(e)=>e.target.style.opacity='0.8'} onMouseLeave={(e)=>e.target.style.opacity='1'}>Contact Support</span>
+            </div>
         </div>
       </footer>
 
@@ -240,10 +262,10 @@ const Home = () => {
 const FeatureCard = ({ icon, title, desc }) => (
   <div style={{ 
     background: 'white', 
-    padding: '50px 40px', 
-    borderRadius: '24px', 
-    boxShadow: '0 10px 40px rgba(0,0,0,0.04)', 
-    transition: 'all 0.4s ease',
+    padding: '40px 30px', 
+    borderRadius: '20px', 
+    boxShadow: '0 10px 30px rgba(0,0,0,0.03)', 
+    transition: 'all 0.3s ease',
     cursor: 'default',
     border: '1px solid #f0f0f0',
     display: 'flex',
@@ -253,26 +275,26 @@ const FeatureCard = ({ icon, title, desc }) => (
     height: '100%'
   }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.transform = 'translateY(-15px)';
-    e.currentTarget.style.boxShadow = '0 30px 60px rgba(0,0,0,0.08)';
+    e.currentTarget.style.transform = 'translateY(-10px)';
+    e.currentTarget.style.boxShadow = '0 25px 50px rgba(0,0,0,0.06)';
     e.currentTarget.style.borderColor = '#d4af37';
   }}
   onMouseLeave={(e) => {
     e.currentTarget.style.transform = 'translateY(0)';
-    e.currentTarget.style.boxShadow = '0 10px 40px rgba(0,0,0,0.04)';
+    e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.03)';
     e.currentTarget.style.borderColor = '#f0f0f0';
   }}
   >
     <div style={{ 
-      width: '80px', height: '80px', background: '#f0f4ff', borderRadius: '20px', 
-      display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '30px', color: '#0f284e' 
+      width: '70px', height: '70px', background: '#f0f4ff', borderRadius: '18px', 
+      display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '25px', color: '#0f284e' 
     }}>
       {icon}
     </div>
-    <h3 style={{ margin: '0 0 20px', color: '#0f284e', fontSize: '26px', fontWeight: '800' }}>{title}</h3>
-    <p style={{ color: '#666', lineHeight: '1.8', fontSize: '16px', margin: 0 }}>{desc}</p>
-    <div style={{ marginTop: 'auto', paddingTop: '30px', display: 'flex', alignItems: 'center', gap: '8px', color: '#d4af37', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' }}>
-      Learn more <ChevronRight size={18} />
+    <h3 style={{ margin: '0 0 15px', color: '#0f284e', fontSize: '22px', fontWeight: '800' }}>{title}</h3>
+    <p style={{ color: '#666', lineHeight: '1.7', fontSize: '15px', margin: 0 }}>{desc}</p>
+    <div style={{ marginTop: 'auto', paddingTop: '25px', display: 'flex', alignItems: 'center', gap: '6px', color: '#d4af37', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' }}>
+      Learn more <ChevronRight size={16} />
     </div>
   </div>
 );
