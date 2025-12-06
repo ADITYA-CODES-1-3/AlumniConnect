@@ -65,19 +65,20 @@ const Dashboard = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8f9fa' }}>
+    <div style={{ minHeight: '100vh', background: '#f8f9fa', overflowX: 'hidden' }}>
       
       {/* Sidebar Overlay Logic */}
       <div className={isSidebarOpen ? "sidebar-open" : "sidebar-closed"}>
          <Sidebar isOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
       </div>
 
-      <div style={{ 
-        marginLeft: isSidebarOpen ? '290px' : '0', 
-        width: isSidebarOpen ? 'calc(100% - 290px)' : '100%',
-        transition: 'all 0.4s ease-in-out', 
-        minHeight: '100vh'
-      }} className="main-content">
+     <div style={{ 
+   marginLeft: isSidebarOpen ? '290px' : '0', 
+   width: 'auto', 
+   maxWidth: '100%', /* ✅ ADD THIS LINE */
+   transition: 'all 0.4s ease-in-out', 
+   minHeight: '100vh'
+}} className="main-content">
         
         {/* Navbar */}
         <nav style={{ 

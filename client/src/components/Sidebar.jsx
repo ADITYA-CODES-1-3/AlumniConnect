@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react'; // 1. IMPORT useEffect HERE
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Briefcase, Calendar, MessageSquare, LogOut, UserCircle, X 
@@ -17,107 +17,134 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { name: 'My Profile', icon: <UserCircle size={24} />, path: '/profile' },
   ];
 
+  // --- 2. NEW CODE: SCROLL LOCK LOGIC START ---
+useEffect(() => {
+    const handleResize = () => {
+      if (isOpen && window.innerWidth < 768) {
+        // HTML & BODY rendayum lock panrom - ithu dhan mukkiyam!
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+      } else {
+        // Release lock
+        document.documentElement.style.overflow = '';
+        document.body.style.overflow = '';
+      }
+    };
+
+    // Trigger immediately when Sidebar opens/closes
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup: Sidebar mooduna udane lock release aaganum
+    return () => {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isOpen]);
+  // --- NEW CODE END ---
+
   const handleLogout = () => {
     localStorage.clear();
     navigate('/login');
   };
 
   return (
-    <div style={{ 
-      width: '290px', // Matches the Dashboard margin
-      background: '#0f284e', // Navy Blue
-      color: 'white', 
-      height: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column',
-      position: 'fixed', 
-      left: 0, 
-      top: 0, 
-      zIndex: 1000,
-      boxShadow: isOpen ? '10px 0 25px rgba(0,0,0,0.15)' : 'none',
-      transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
-      transition: 'transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)'
-    }}>
-      
-      {/* 1. Header */}
-      <div style={{ padding: '35px 25px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ color: '#d4af37', fontSize: '24px', fontWeight: '800', letterSpacing: '1px', margin: 0 }}>
-          Alumni<span style={{ color: 'white' }}>Connect</span>
-        </h2>
-        <button onClick={toggleSidebar} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', opacity: 0.7 }}>
-            <X size={28} />
-        </button>
+    <>
+      {/* Overlay - Mobile Only */}
+      {isOpen && (
+        <div 
+          onClick={toggleSidebar}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999 }}
+          className="md:hidden"
+        />
+      )}
+
+      {/* Sidebar Container */}
+      <div style={{ 
+        width: '280px', 
+        background: '#0f284e', 
+        color: 'white',
+        position: 'fixed', 
+        top: 0, 
+        bottom: 0, 
+        left: 0, 
+        zIndex: 1000,
+        boxShadow: isOpen ? '10px 0 25px rgba(0,0,0,0.15)' : 'none',
+        transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        display: 'flex', 
+        flexDirection: 'column',
+      }}>
+        
+        {/* Header */}
+        <div style={{ padding: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <h2 style={{ color: '#d4af37', fontSize: '22px', fontWeight: '800', letterSpacing: '0.5px', margin: 0 }}>
+            Alumni<span style={{ color: 'white' }}>Connect</span>
+          </h2>
+          <button onClick={toggleSidebar} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}>
+             <X size={24} />
+          </button>
+        </div>
+
+        {/* Menu Items */}
+        <nav style={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          padding: '10px 15px', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '8px' 
+        }}>
+          {menuItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <div 
+                key={item.name}
+                onClick={() => { 
+                  navigate(item.path); 
+                  if(window.innerWidth < 768) toggleSidebar(); 
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '15px', padding: '12px 20px',
+                  borderRadius: '10px', cursor: 'pointer',
+                  background: isActive ? 'linear-gradient(90deg, rgba(212,175,55,0.15) 0%, rgba(15,40,78,0) 100%)' : 'transparent',
+                  color: isActive ? '#d4af37' : '#b0b8c4',
+                  borderLeft: isActive ? '4px solid #d4af37' : '4px solid transparent',
+                  transition: 'all 0.2s ease',
+                  fontWeight: isActive ? '600' : '500', fontSize: '15px'
+                }}
+              >
+                {item.icon}
+                <span>{item.name}</span>
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* Logout Button */}
+        <div style={{ 
+          padding: '20px', 
+          borderTop: '1px solid rgba(255,255,255,0.1)', 
+          flexShrink: 0,
+          marginBottom: 'safe-area-inset-bottom'
+        }}>
+          <button 
+            onClick={handleLogout} 
+            style={{ 
+              width: '100%', padding: '12px', background: 'rgba(212, 175, 55, 0.1)', 
+              color: '#d4af37', border: '1px solid #d4af37', borderRadius: '10px', 
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              gap: '10px', fontWeight: 'bold', fontSize: '16px', transition: 'all 0.3s'
+            }}
+          >
+            <LogOut size={20} /> Logout
+          </button>
+        </div>
+
       </div>
-
-      {/* 2. Menu Items */}
-      <nav style={{ flex: 1, padding: '30px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {menuItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <div 
-              key={item.name}
-              onClick={() => { navigate(item.path); }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '20px',
-                padding: '16px 25px',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                
-                // Active State: Gradient Gold
-                background: isActive 
-                  ? 'linear-gradient(90deg, rgba(212,175,55,0.15) 0%, rgba(15,40,78,0) 100%)' 
-                  : 'transparent',
-                
-                color: isActive ? '#d4af37' : '#b0b8c4',
-                borderLeft: isActive ? '5px solid #d4af37' : '5px solid transparent',
-                transition: 'all 0.3s ease',
-                fontWeight: isActive ? '600' : '500',
-                fontSize: '17px'
-              }}
-            >
-              {item.icon}
-              <span>{item.name}</span>
-            </div>
-          );
-        })}
-      </nav>
-
-      {/* 3. Logout Button (FIXED: Now Gold & Clean) */}
-      <div style={{ padding: '30px 25px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-        <button 
-          onClick={handleLogout} 
-          style={{ 
-            width: '100%', 
-            padding: '16px', 
-            background: 'transparent', 
-            color: '#d4af37', // Gold Text
-            border: '2px solid #d4af37', // Gold Border
-            borderRadius: '12px', 
-            cursor: 'pointer', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            gap: '12px', 
-            fontWeight: 'bold',
-            fontSize: '18px',
-            transition: 'all 0.3s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#d4af37';
-            e.currentTarget.style.color = '#0f284e';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = '#d4af37';
-          }}
-        >
-          <LogOut size={22} /> Logout
-        </button>
-      </div>
-
-    </div>
+    </>
   );
 };
 

@@ -244,15 +244,28 @@ a {
   color: var(--primary-navy);
 }
 
-/* --- GRID SYSTEM (DESKTOP FIX) --- */
+/* --- FIXED GRID SYSTEM --- */
 .stats-grid {
   display: grid;
-  /* Smart Grid: Columns min 280px, auto-fill remaining space */
-  /* This prevents cards from stretching too wide on large screens */
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 30px;
   width: 100%;
+  gap: 20px;
   margin-bottom: 40px;
+  /* Default Mobile View: 1 Column */
+  grid-template-columns: 1fr;
+}
+
+/* Tablet View: 2 Columns */
+@media (min-width: 640px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Laptop/Desktop View: STRICTLY 4 COLUMNS */
+@media (min-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 /* Card Styling */
@@ -347,38 +360,47 @@ a {
 }
 
 /* =========================================
-   5. MOBILE RESPONSIVENESS (THE ULTIMATE FIX)
+   5. MOBILE RESPONSIVENESS (FINAL CLEAN FIX)
    ========================================= */
 
 /* Only apply these rules on screens smaller than 768px (Tablets & Phones) */
 @media (max-width: 768px) {
   
-  /* FORCE Content to be Full Width on Mobile */
-  /* This overrides the React inline style "marginLeft: 290px" */
-  div[style*="margin-left"] {
-    margin-left: 0 !important;
-    width: 100% !important;
-    padding: 20px 15px !important; /* Reduce padding */
+  /* 1. MASTER FIX: REMOVE SCROLL & MARGIN ISSUES */
+  /* This targets your main-content and forces it to fit screen */
+  .main-content, div[style*="margin-left"] {
+    margin-left: 0 !important;   /* Force Sidebar margin to 0 */
+    width: 100% !important;      /* Fit width exactly */
+    overflow-x: hidden !important; /* Cut extra content */
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
-  /* Navbar Adjustments */
+  /* 2. BODY LOCK */
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  /* 3. PADDING ADJUSTMENT */
+  /* Reduces the 30px padding inside dashboard to 15px on mobile */
+  .main-content > div {
+    padding: 15px !important;
+  }
+
+  /* 4. NAVBAR FIXES */
   nav {
     padding: 0 15px !important;
     height: 70px !important;
   }
 
-  /* Hide Sidebar completely when closed */
-  body {
-    overflow-x: hidden;
-  }
-
-  /* Grid Stack - 1 Column on Mobile */
+  /* 5. GRID STACK (Force 1 Column) */
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
     gap: 15px;
   }
   
-  /* Card Size Adjustments for Mobile */
+  /* 6. Card & Text Size Adjustments */
   .stat-card {
     padding: 20px;
   }
@@ -387,14 +409,13 @@ a {
     font-size: 32px;
   }
 
-  /* Login Page Adjustments */
+  /* 7. Login Page Adjustments */
   .login-container {
     padding: 30px 20px;
     max-width: 100%;
     margin: 10px;
   }
   
-  /* --- LOGO SIZE ON MOBILE --- */
   .logo-img {
     width: 90px;
     height: 90px;
@@ -404,7 +425,6 @@ a {
     font-size: 22px;
   }
 
-  /* Buttons on mobile */
   .btn-login {
     padding: 12px;
     font-size: 15px;

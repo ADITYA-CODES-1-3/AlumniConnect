@@ -8,14 +8,15 @@ const Home = () => {
   const navigate = useNavigate();
 
   return (
-    <div style={{ minHeight: '100vh', fontFamily: "'Segoe UI', sans-serif", background: '#ffffff', color: '#333' }}>
+    <div style={{ minHeight: '100vh', fontFamily: "'Segoe UI', sans-serif", background: '#ffffff', color: '#333', overflowX: 'hidden' }}>
       
       {/* 1. Glassmorphism Navbar (Sticky & Clean) */}
       <nav style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        padding: '15px 6%', 
+        /* FIX 1: Responsive Padding using clamp (Mobile: 20px, Laptop: 6%) */
+        padding: '15px clamp(20px, 6%, 80px)', 
         background: 'rgba(255, 255, 255, 0.95)', 
         backdropFilter: 'blur(15px)',
         position: 'sticky',
@@ -29,22 +30,25 @@ const Home = () => {
           <img 
             src={logo} 
             alt="AlumniConnect Logo" 
-            style={{ width: '45px', height: '45px', objectFit: 'contain' }} 
-            onError={(e) => { e.target.style.display='none'; }} // Hide if broken
+            /* FIX 2: Logo scaling for mobile */
+            style={{ width: 'clamp(35px, 5vw, 45px)', height: 'clamp(35px, 5vw, 45px)', objectFit: 'contain' }} 
+            onError={(e) => { e.target.style.display='none'; }} 
           />
           {/* Text Logo */}
-          <h2 style={{ margin: 0, color: '#0f284e', fontWeight: '800', fontSize: '24px', letterSpacing: '-0.5px' }}>
+          <h2 style={{ margin: 0, color: '#0f284e', fontWeight: '800', fontSize: 'clamp(18px, 2.5vw, 24px)', letterSpacing: '-0.5px' }}>
             Alumni<span style={{ color: '#d4af37' }}>Connect</span>
           </h2>
         </div>
         
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 'clamp(10px, 2vw, 20px)', alignItems: 'center' }}>
           <button 
             onClick={() => navigate('/login')} 
             style={{ 
               padding: '10px 25px', background: 'transparent', color: '#0f284e', 
               fontWeight: '700', fontSize: '15px', border: '2px solid transparent', 
-              cursor: 'pointer', transition: 'all 0.3s', borderRadius: '8px'
+              cursor: 'pointer', transition: 'all 0.3s', borderRadius: '8px',
+              /* Hide login text on very small screens if needed, otherwise keep it */
+              display: 'block' 
             }}
             onMouseEnter={(e) => { e.target.style.borderColor = '#0f284e'; }}
             onMouseLeave={(e) => { e.target.style.borderColor = 'transparent'; }}
@@ -54,10 +58,10 @@ const Home = () => {
           <button 
             onClick={() => navigate('/register')} 
             style={{ 
-              padding: '10px 30px', background: '#0f284e', border: 'none', 
+              padding: '10px clamp(15px, 3vw, 30px)', background: '#0f284e', border: 'none', 
               color: 'white', borderRadius: '50px', fontWeight: 'bold', 
               cursor: 'pointer', boxShadow: '0 8px 20px rgba(15, 40, 78, 0.25)', 
-              transition: 'all 0.3s', fontSize: '15px' 
+              transition: 'all 0.3s', fontSize: '15px', whiteSpace: 'nowrap'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
@@ -68,7 +72,7 @@ const Home = () => {
               e.currentTarget.style.boxShadow = '0 8px 20px rgba(15, 40, 78, 0.25)';
             }}
           >
-            Join Network
+            Join
           </button>
         </div>
       </nav>
@@ -76,7 +80,8 @@ const Home = () => {
       {/* 2. Massive Hero Section */}
       <header style={{ 
         textAlign: 'center', 
-        padding: '100px 20px 120px', 
+        /* FIX 3: Responsive Padding (Less on mobile, More on Laptop) */
+        padding: 'clamp(80px, 10vh, 120px) 20px clamp(100px, 12vh, 140px)', 
         background: 'radial-gradient(circle at 50% 50%, #fcfcfc 0%, #f1f5f9 100%)',
         position: 'relative',
         overflow: 'hidden'
@@ -98,7 +103,8 @@ const Home = () => {
           
           {/* BIGGER HEADER TEXT */}
           <h1 style={{ 
-            fontSize: '64px', 
+            /* FIX 4: Clamp Font Size (Mobile: 36px, Laptop: 64px) */
+            fontSize: 'clamp(36px, 8vw, 64px)', 
             color: '#0f284e', 
             marginBottom: '25px', 
             lineHeight: '1.1', 
@@ -119,7 +125,7 @@ const Home = () => {
           </h1>
           
           <p style={{ 
-            fontSize: '20px', 
+            fontSize: 'clamp(16px, 4vw, 20px)', /* Responsive Paragraph */
             color: '#555', 
             marginBottom: '50px', 
             maxWidth: '700px', 
@@ -130,7 +136,7 @@ const Home = () => {
             Reconnect with seniors, mentor juniors, find exclusive job opportunities, and build a lasting legacy with your institution.
           </p>
           
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
             <button 
               onClick={() => navigate('/register')} 
               style={{ 
@@ -177,15 +183,17 @@ const Home = () => {
       <div style={{ maxWidth: '1100px', margin: '-60px auto 0', position: 'relative', zIndex: 10, padding: '0 20px' }}>
         <div style={{ 
           background: '#0f284e', padding: '40px', borderRadius: '20px', 
+          /* FIX 5: Reduced min-width to 200px so it fits mobile screen */
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
           textAlign: 'center', color: 'white', boxShadow: '0 20px 50px rgba(15, 40, 78, 0.3)',
-          border: '1px solid rgba(255,255,255,0.1)'
+          border: '1px solid rgba(255,255,255,0.1)',
+          gap: '20px' /* Added gap so stacked items don't touch */
         }}>
-          <div style={{ borderRight: '1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ borderRight: window.innerWidth > 768 ? '1px solid rgba(255,255,255,0.1)' : 'none' }}>
             <h2 style={{ fontSize: '48px', fontWeight: 'bold', margin: 0, color: '#d4af37' }}>5000+</h2>
             <p style={{ margin: '10px 0 0', opacity: 0.8, fontSize: '14px', letterSpacing: '2px', fontWeight: '600' }}>ALUMNI CONNECTED</p>
           </div>
-          <div style={{ borderRight: '1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ borderRight: window.innerWidth > 768 ? '1px solid rgba(255,255,255,0.1)' : 'none' }}>
             <h2 style={{ fontSize: '48px', fontWeight: 'bold', margin: 0, color: '#d4af37' }}>120+</h2>
             <p style={{ margin: '10px 0 0', opacity: 0.8, fontSize: '14px', letterSpacing: '2px', fontWeight: '600' }}>TOP COMPANIES</p>
           </div>
@@ -200,7 +208,7 @@ const Home = () => {
       <section style={{ padding: '120px 20px', background: '#ffffff' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '70px' }}>
-            <h2 style={{ fontSize: '36px', color: '#0f284e', fontWeight: '900', marginBottom: '15px' }}>Why Join AlumniConnect?</h2>
+            <h2 style={{ fontSize: 'clamp(28px, 5vw, 36px)', color: '#0f284e', fontWeight: '900', marginBottom: '15px' }}>Why Join AlumniConnect?</h2>
             <p style={{ fontSize: '18px', color: '#666', maxWidth: '600px', margin: '0 auto' }}>Unlock the power of your institution's global network with tools designed for your growth.</p>
           </div>
 
@@ -224,32 +232,36 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 5. Footer - Compact & Professional */}
+      {/* 5. Footer - Compact & Mobile Friendly */}
       <footer style={{ background: '#0b1e3b', color: 'white', borderTop: '4px solid #d4af37' }}>
         <div style={{ 
-            maxWidth: '1200px', margin: '0 auto', padding: '40px 30px', 
+            maxWidth: '1200px', margin: '0 auto', 
+            /* REDUCED PADDING: 20px on mobile, 40px on laptop */
+            padding: 'clamp(20px, 4vh, 40px) 20px', 
             display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-            flexWrap: 'wrap', gap: '20px' 
+            flexWrap: 'wrap', gap: '15px' 
         }}>
             
             {/* Left: Brand Identity & Copyright */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ background: 'white', borderRadius: '50%', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <img src={logo} alt="Logo" style={{ width: '24px', height: '24px' }} onError={(e) => e.target.style.display='none'} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ background: 'white', borderRadius: '50%', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {/* Reduced Logo Size: 20px */}
+                        <img src={logo} alt="Logo" style={{ width: '20px', height: '20px' }} onError={(e) => e.target.style.display='none'} />
                     </div>
-                    <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', letterSpacing: '-0.5px' }}>AlumniConnect</h3>
+                    {/* Reduced Font Size: 16px */}
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', letterSpacing: '-0.5px' }}>AlumniConnect</h3>
                 </div>
-                <p style={{ margin: 0, color: 'rgba(255,255,255,0.5)', fontSize: '13px', marginLeft: '4px' }}>
-                    &copy; 2025 AlumniConnect. All rights reserved.
+                <p style={{ margin: 0, color: 'rgba(255,255,255,0.5)', fontSize: '11px', marginLeft: '2px' }}>
+                    &copy; 2025 AlumniConnect.
                 </p>
             </div>
 
             {/* Right: Legal & Support Links */}
-            <div style={{ display: 'flex', gap: '30px', fontSize: '14px', fontWeight: '600', color: '#d4af37' }}>
-                <span style={{ cursor: 'pointer', transition: 'opacity 0.2s' }} onMouseEnter={(e)=>e.target.style.opacity='0.8'} onMouseLeave={(e)=>e.target.style.opacity='1'}>Privacy Policy</span>
-                <span style={{ cursor: 'pointer', transition: 'opacity 0.2s' }} onMouseEnter={(e)=>e.target.style.opacity='0.8'} onMouseLeave={(e)=>e.target.style.opacity='1'}>Terms of Service</span>
-                <span style={{ cursor: 'pointer', transition: 'opacity 0.2s' }} onMouseEnter={(e)=>e.target.style.opacity='0.8'} onMouseLeave={(e)=>e.target.style.opacity='1'}>Contact Support</span>
+            <div style={{ display: 'flex', gap: '15px', fontSize: '12px', fontWeight: '600', color: '#d4af37', flexWrap: 'wrap' }}>
+                <span style={{ cursor: 'pointer', opacity: 0.8 }}>Privacy</span>
+                <span style={{ cursor: 'pointer', opacity: 0.8 }}>Terms</span>
+                <span style={{ cursor: 'pointer', opacity: 0.8 }}>Support</span>
             </div>
         </div>
       </footer>
