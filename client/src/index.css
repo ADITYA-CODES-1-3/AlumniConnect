@@ -446,3 +446,31 @@ a {
     gap: 40px;
   }
 }
+
+/* =========================================
+   6. GLOBAL FIXES (Remove White Bars & Highlights)
+   ========================================= */
+
+/* Removes blue/white tap highlight on mobile for ALL elements */
+* {
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none !important;
+}
+
+/* Removes focus outline on buttons, links, and inputs */
+button:focus, a:focus, input:focus, div:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Forces Icons (SVGs) to have transparent background */
+svg {
+  background-color: transparent !important;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Fix for buttons having weird borders on some mobile browsers */
+button {
+  border-style: solid;
+}
