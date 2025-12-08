@@ -136,7 +136,7 @@ const Profile = () => {
         updatedData.skills = updatedData.skills.split(',').map(s => s.trim()).filter(s => s);
       }
       
-      const res = await api.put('/auth/update-profile', updatedData);
+      const res = await api.put('/auth/me/update', updatedData);
       setUser(res.data.user);
       setIsEditing(false);
       toast.success('Profile Updated Successfully!');
