@@ -2,9 +2,9 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
-const http = require('http'); // 1. Import HTTP
-const { Server } = require('socket.io'); // 2. Import Socket.io
-const Message = require('./models/Message'); // 3. Import Message Model
+const http = require('http'); 
+const { Server } = require('socket.io'); 
+const Message = require('./models/Message'); 
 
 // Import Routes
 const authRoutes = require('./routes/authRoutes');
@@ -18,15 +18,22 @@ dotenv.config();
 connectDB();
 
 const app = express();
-
-// 4. Create HTTP Server to wrap Express
 const server = http.createServer(app);
 
-// 5. Initialize Socket.io with CORS
+// --- 1. DEFINE ALLOWED ORIGINS (CRITICAL FIX) ---
+const allowedOrigins = [
+  "http://localhost:5173",             // Local Frontend
+  "http://localhost:5000",             // Local Backend (Postman/Self)
+  "https://alumniconnect-ub5c.onrender.com", // Your Deployed Backend
+  "https://alumni-connect-lovat.vercel.app/"   // <--- OR HERE (If hosted on Render)
+];
+
+// --- 2. CONFIGURE SOCKET.IO CORS ---
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // Your React Frontend URL
-    methods: ["GET", "POST"]
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true // Allow cookies/headers
   }
 });
 
@@ -34,9 +41,9 @@ const io = new Server(server, {
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Middleware
+// --- 3. CONFIGURE EXPRESS CORS ---
 app.use(cors({
-  origin: '*', 
+  origin: allowedOrigins,
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
@@ -47,7 +54,7 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/mentorship', mentorshipRoutes);
 app.use('/api/chat', chatRoutes);
 
-// --- 6. REAL-TIME CHAT & NOTIFICATION LOGIC ---
+// --- 4. REAL-TIME CHAT & NOTIFICATION LOGIC ---
 io.on('connection', (socket) => {
   console.log(`User Connected: ${socket.id}`);
 
@@ -77,13 +84,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- NEW: Handle Real-time Notifications (Mentorship Updates) ---
+  // Handle Notifications (Mentorship Updates)
   socket.on('send_notification', (data) => {
     console.log(`Notification sent to ${data.receiverId}`);
-    // This tells the receiver to refresh their data
     io.to(data.receiverId).emit('receive_notification');
   });
-  // ----------------------------------------------------------------
 
   socket.on('disconnect', () => {
     console.log('User Disconnected', socket.id);
@@ -92,10 +97,9 @@ io.on('connection', (socket) => {
 
 // Health Check Route
 app.get('/', (req, res) => {
-    res.send("AlumniConnect Server is Running with Chat & Notifications!");
+    res.send("AlumniConnect Server is Running!");
 });
 
 const PORT = process.env.PORT || 5000;
 
-// 7. CRITICAL: Use server.listen, NOT app.listen
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

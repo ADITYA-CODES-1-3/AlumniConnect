@@ -1,19 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
-import api from '../utils/api'; // Ensure this points to your axios instance
+import api, { SERVER_URL } from '../utils/api'; // 1. Import SERVER_URL
 import Sidebar from '../components/Sidebar';
 import { Send, ArrowLeft, Phone, Video, MoreVertical } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// --- FIXED: Dynamic Socket Connection ---
-// If we are on localhost, use port 5000. Otherwise, use the deployed Render URL.
-const SOCKET_URL = window.location.hostname === 'localhost' 
-  ? "http://localhost:5000" 
-  : "https://alumniconnect-ub5c.onrender.com";
-
-// Initialize Socket connection with the correct URL
-const socket = io.connect(SOCKET_URL);
+// 2. Use the Dynamic URL
+const socket = io.connect(SERVER_URL);
 
 const Chat = () => {
   const { receiverId } = useParams();

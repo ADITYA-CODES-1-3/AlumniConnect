@@ -1,12 +1,11 @@
 import axios from 'axios';
 
-// 1. Define the Root Server URL (For Socket.io)
-// This points to the main server, NOT the /api route
+// 1. Define the Root Server URL (For Socket.io) - NO "/api" at the end
 const SERVER_URL = window.location.hostname === 'localhost' 
   ? 'http://localhost:5000'  
   : 'https://alumniconnect-ub5c.onrender.com'; 
 
-// 2. Define the API URL (For Axios HTTP calls)
+// 2. Define the API URL (For Axios) - WITH "/api" at the end
 const API_URL = `${SERVER_URL}/api`;
 
 const api = axios.create({
@@ -27,6 +26,6 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-// Export SERVER_URL so Chat.jsx and Mentorship.jsx can use it
+// Export SERVER_URL so Chat & Mentorship pages can use it
 export { SERVER_URL }; 
 export default api;
