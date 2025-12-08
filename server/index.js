@@ -13,40 +13,28 @@ const mentorshipRoutes = require('./routes/mentorshipRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 
 dotenv.config();
-
-// Connect to Database
 connectDB();
 
 const app = express();
 const server = http.createServer(app);
 
-// --- 1. DEFINE ALLOWED ORIGINS (FIXED) ---
-const allowedOrigins = [
-  "http://localhost:5173",             // Local Frontend
-  "http://localhost:5000",             // Local Backend
-  "https://alumniconnect-ub5c.onrender.com", // Your Deployed Backend
-  "https://alumni-connect-lovat.vercel.app"  // <--- SLASH REMOVED HERE
-];
+// --- 1. ALLOW ALL ORIGINS FOR DEBUGGING ---
+// This fixes the strict string matching issue
+app.use(cors({
+  origin: true, // Allow any origin that connects
+  credentials: true
+}));
 
-// --- 2. CONFIGURE SOCKET.IO CORS ---
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
-    methods: ["GET", "POST"],
-    credentials: true 
+    origin: "*", // Allow all origins for Socket.io
+    methods: ["GET", "POST"]
   }
 });
 
 // Default is 100kb. We increase it to 50mb for Base64 Images.
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// --- 3. CONFIGURE EXPRESS CORS ---
-app.use(cors({
-  origin: allowedOrigins,
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
 
 // --- ROUTE CONNECTIONS ---
 app.use('/api/auth', authRoutes);       
@@ -58,7 +46,6 @@ app.use('/api/chat', chatRoutes);
 io.on('connection', (socket) => {
   console.log(`User Connected: ${socket.id}`);
 
-  // Join a specific room (User ID)
   socket.on('join_room', (userId) => {
     if (userId) {
       socket.join(userId);
@@ -66,25 +53,17 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle Sending Messages (Chat)
   socket.on('send_message', async (data) => {
     const { senderId, receiverId, message } = data;
-    
-    // A. Save to Database
     try {
       const newMessage = new Message({ senderId, receiverId, message });
       await newMessage.save();
-      console.log("Message saved to DB");
-
-      // B. Emit to Receiver (Real-time)
       io.to(receiverId).emit('receive_message', data);
-      
     } catch (error) {
       console.error("Error saving message:", error);
     }
   });
 
-  // Handle Notifications (Mentorship Updates)
   socket.on('send_notification', (data) => {
     console.log(`Notification sent to ${data.receiverId}`);
     io.to(data.receiverId).emit('receive_notification');
@@ -95,11 +74,9 @@ io.on('connection', (socket) => {
   });
 });
 
-// Health Check Route
 app.get('/', (req, res) => {
     res.send("AlumniConnect Server is Running!");
 });
 
 const PORT = process.env.PORT || 5000;
-
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
