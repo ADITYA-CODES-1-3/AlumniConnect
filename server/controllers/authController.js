@@ -1,6 +1,6 @@
 const User = require('../models/User');
-const Job = require('../models/Job'); // IMPORTED FOR STATS
-const Mentorship = require('../models/Mentorship'); // IMPORTED FOR STATS
+const Job = require('../models/Job'); 
+const Mentorship = require('../models/Mentorship'); 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -20,7 +20,7 @@ exports.register = async (req, res) => {
 
         const user = new User({
             name, email, password: hashedPassword, role,
-            isApproved: false, // Strict Admin Approval
+            isApproved: false, 
             department, batch, 
             rollNumber: role === 'Student' ? rollNumber : undefined,
             currentCompany: role === 'Alumni' ? currentCompany : undefined,
@@ -68,19 +68,15 @@ exports.login = async (req, res) => {
     }
 };
 
-// 3. GET DASHBOARD STATS (Dynamic & Role Based)
+// 3. GET DASHBOARD STATS
 exports.getDashboardStats = async (req, res) => {
     try {
         const userId = req.user.id;
         const role = req.user.role;
-
-        // Common Stat: Total Active Jobs
         const jobCount = await Job.countDocuments() || 0;
-
         let stats = {};
 
         if (role === 'Student') {
-            // Student sees: Active Jobs & My Requests
             const myMentorships = await Mentorship.countDocuments({ studentId: userId });
             stats = {
                 card1: { label: "Active Jobs", value: jobCount },
@@ -88,7 +84,6 @@ exports.getDashboardStats = async (req, res) => {
                 card3: { label: "Events", value: 3 }
             };
         } else if (role === 'Alumni') {
-            // Alumni sees: Total Students & Active Jobs
             const studentCount = await User.countDocuments({ role: 'Student' });
             stats = {
                 card1: { label: "Total Students", value: studentCount },
@@ -96,7 +91,6 @@ exports.getDashboardStats = async (req, res) => {
                 card3: { label: "Events", value: 3 }
             };
         } else {
-            // Admin sees everything
             const userCount = await User.countDocuments();
             stats = {
                 card1: { label: "Total Users", value: userCount },
@@ -104,16 +98,13 @@ exports.getDashboardStats = async (req, res) => {
                 card3: { label: "Pending Approvals", value: 0 }
             };
         }
-
         res.json(stats);
-
     } catch (error) {
-        console.error("Stats Error:", error);
         res.status(500).json({ message: "Server Error" });
     }
 };
 
-// 4. UPDATE PROFILE (With Image Persistence)
+// 4. UPDATE PROFILE
 exports.updateProfile = async (req, res) => {
     try {
         const { name, bio, skills, about, location, socialLinks, department, batch, rollNumber, currentCompany, jobRole, profileImage } = req.body;
@@ -124,7 +115,7 @@ exports.updateProfile = async (req, res) => {
                 $set: { 
                     name, bio, skills, about, location, socialLinks,
                     department, batch, rollNumber, currentCompany, jobRole,
-                    profileImage // Saves the image to DB
+                    profileImage 
                 } 
             },
             { new: true, runValidators: true }
@@ -147,11 +138,23 @@ exports.getProfile = async (req, res) => {
     }
 };
 
-// 6. GET ALL USERS (Directory)
+// 6. GET ALL USERS (Directory & Single Profile)
 exports.getAllUsers = async (req, res) => {
     try {
-        const { role } = req.query; 
-        const users = await User.find({ role }).select('-password');
+        const { role, id } = req.query; 
+        
+        let query = {};
+        
+        // If searching for a specific user ID (Profile View)
+        if (id) {
+            query._id = id;
+        } 
+        // If searching by role (Directory View)
+        else if (role) {
+            query.role = role;
+        }
+
+        const users = await User.find(query).select('-password');
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: "Server Error" });

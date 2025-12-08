@@ -27,11 +27,22 @@ exports.sendRequest = async (req, res) => {
 };
 
 // 2. Get My Requests (For Alumni)
+// 2. Get My Requests (For Both Student & Alumni)
 exports.getMyRequests = async (req, res) => {
     try {
-        const requests = await Mentorship.find({ alumniId: req.user.id }).populate('studentId', 'name email department');
+        // Find all requests where the user is EITHER the student (sender) OR the alumni (receiver)
+        const requests = await Mentorship.find({
+            $or: [
+                { alumniId: req.user.id },
+                { studentId: req.user.id }
+            ]
+        })
+        .populate('studentId', 'name email department profileImage') // Get Student Details
+        .populate('alumniId', 'name currentCompany jobRole profileImage'); // Get Alumni Details
+
         res.json(requests);
     } catch (err) {
+        console.error(err);
         res.status(500).json({ message: "Server Error" });
     }
 };
@@ -43,6 +54,25 @@ exports.updateStatus = async (req, res) => {
         await Mentorship.findByIdAndUpdate(req.params.id, { status });
         res.json({ message: `Request ${status}` });
     } catch (err) {
+        res.status(500).json({ message: "Server Error" });
+    }
+};
+
+// 4. Remove Connection (Delete Request)
+exports.removeConnection = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Find and Delete
+        const deletedRequest = await Mentorship.findByIdAndDelete(id);
+        
+        if (!deletedRequest) {
+            return res.status(404).json({ message: "Connection not found" });
+        }
+
+        res.json({ message: "Connection Removed Successfully" });
+    } catch (err) {
+        console.error(err);
         res.status(500).json({ message: "Server Error" });
     }
 };

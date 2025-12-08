@@ -13,6 +13,8 @@ import PostJob from './pages/PostJob';
 import Profile from './pages/Profile';
 import Mentorship from './pages/Mentorship';
 
+import Chat from './pages/Chat';
+
 // --- IMPORT COMPONENTS ---
 import PrivateRoute from './components/PrivateRoute';
 
@@ -34,6 +36,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
+        <Route path="/chat/:receiverId" element={<PrivateRoute><Chat /></PrivateRoute>} />
         
         {/* ============================== */}
         {/* PROTECTED ROUTES (Locked)   */}
@@ -78,14 +81,7 @@ function App() {
         />
 
         {/* 4. Profile Section */}
-        <Route 
-          path="/profile" 
-          element={
-            <PrivateRoute>
-              <Profile />
-            </PrivateRoute>
-          } 
-        />
+        <Route path="/profile/:id?" element={<PrivateRoute><Profile /></PrivateRoute>} />
 
         {/* 5. Mentorship System */}
         <Route 

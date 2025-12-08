@@ -1,15 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useParams } from 'react-router-dom'; // Import to read ID from URL
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import Sidebar from '../components/Sidebar';
 import { Briefcase, Code, Link as LinkIcon, Save, Edit2, Github, Linkedin, Menu, Camera, MapPin, Calendar, User as UserIcon, Mail } from 'lucide-react';
 
 const Profile = () => {
+  const { id } = useParams(); // Get ID from URL parameters
   const [user, setUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
-  // Initial Empty State to prevent undefined errors
+  // Track if the logged-in user owns this profile
+  const [isOwner, setIsOwner] = useState(false); 
+
+  // Initial Empty State
   const [formData, setFormData] = useState({
     name: '',
     bio: '',
@@ -17,39 +22,80 @@ const Profile = () => {
     location: '',
     skills: [],
     socialLinks: { github: '', linkedin: '', website: '' },
-    profileImage: ''
+    profileImage: '',
+    currentCompany: '', 
+    jobRole: '',
+    department: '',
+    rollNumber: ''
   });
   
   const fileInputRef = useRef(null);
 
-  // 1. Fetch Profile Data
+  // 1. Fetch Profile Data (Logic Updated)
   useEffect(() => {
     fetchProfile();
-  }, []);
+  }, [id]); // Re-run when ID changes
 
   const fetchProfile = async () => {
     try {
-      const res = await api.get('/auth/me');
-      setUser(res.data);
+      let data;
       
-      // Ensure socialLinks object exists
-      const data = res.data;
-      if (!data.socialLinks) data.socialLinks = { github: '', linkedin: '', website: '' };
+      if (id) {
+        // CASE A: Viewing someone else (Read-Only)
+        const res = await api.get(`/auth/users?id=${id}`);
+        
+        // The API returns an array for search, so pick the correct user
+        if (Array.isArray(res.data)) {
+           data = res.data.find(u => u._id === id);
+        } else {
+           data = res.data;
+        }
+        
+        setIsOwner(false); // It's not my profile
+      } else {
+        // CASE B: Viewing myself (Editable)
+        const res = await api.get('/auth/me');
+        data = res.data;
+        setIsOwner(true); // It is my profile
+      }
+
+      if (!data) {
+        toast.error("User not found");
+        return;
+      }
+
+      setUser(data);
       
-      setFormData(data); 
+      // Initialize Form Data safely
+      setFormData({
+        name: data.name || '',
+        bio: data.bio || '',
+        about: data.about || '',
+        location: data.location || '',
+        skills: data.skills || [],
+        socialLinks: data.socialLinks || { github: '', linkedin: '', website: '' },
+        profileImage: data.profileImage || '',
+        currentCompany: data.currentCompany || '',
+        jobRole: data.jobRole || '',
+        department: data.department || '',
+        rollNumber: data.rollNumber || ''
+      });
+      
     } catch (err) {
       console.error(err);
       toast.error('Failed to load profile');
     }
   };
 
-  // 2. Handle Text Input
+  // 2. Handle Text Input (Only if Owner)
   const handleChange = (e) => {
+    if (!isOwner) return; 
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
   
-  // 3. Handle Social Links (FIXED)
+  // 3. Handle Social Links (Only if Owner)
   const handleSocialChange = (e) => {
+    if (!isOwner) return;
     setFormData({
       ...formData,
       socialLinks: { 
@@ -59,11 +105,12 @@ const Profile = () => {
     });
   };
 
-  // 4. Handle Image Upload (Base64)
+  // 4. Handle Image Upload (Only if Owner)
   const handleImageUpload = (e) => {
+    if (!isOwner) return;
+
     const file = e.target.files[0];
     if (file) {
-      // Limit to 4MB (Backend limit must be increased too)
       if (file.size > 4 * 1024 * 1024) {
         toast.error("Image size too large! Max 4MB.");
         return;
@@ -77,8 +124,10 @@ const Profile = () => {
     }
   };
 
-  // 5. Save Changes
+  // 5. Save Changes (Only if Owner)
   const handleSave = async () => {
+    if (!isOwner) return;
+
     try {
       const updatedData = { ...formData };
       
@@ -87,13 +136,13 @@ const Profile = () => {
         updatedData.skills = updatedData.skills.split(',').map(s => s.trim()).filter(s => s);
       }
       
-      const res = await api.put('/auth/me/update', updatedData);
+      const res = await api.put('/auth/update-profile', updatedData);
       setUser(res.data.user);
       setIsEditing(false);
       toast.success('Profile Updated Successfully!');
     } catch (err) {
       console.error(err);
-      toast.error('Update Failed. Check console/network tab.');
+      toast.error('Update Failed.');
     }
   };
 
@@ -118,32 +167,37 @@ const Profile = () => {
         <nav style={{ background: 'white', padding: '0 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '70px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 40 }}>
            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0f284e' }}><Menu size={24} /></button>
-            <h2 style={{ margin: 0, color: '#0f284e', fontSize: '20px', fontWeight: 'bold' }}>My Profile</h2>
+            <h2 style={{ margin: 0, color: '#0f284e', fontSize: '20px', fontWeight: 'bold' }}>
+               {isOwner ? "My Profile" : `${user.name}'s Profile`}
+            </h2>
            </div>
            
-           <button onClick={() => isEditing ? handleSave() : setIsEditing(true)} 
-             style={{ 
-               display: 'flex', gap: '8px', padding: '10px 24px', 
-               background: isEditing ? '#10b981' : '#0f284e', 
-               color: 'white', border: 'none', borderRadius: '50px', 
-               fontWeight: 'bold', cursor: 'pointer', transition: '0.3s',
-               boxShadow: '0 4px 15px rgba(15, 40, 78, 0.2)'
-             }}>
-             {isEditing ? <><Save size={18}/> Save Changes</> : <><Edit2 size={18}/> Edit Profile</>}
-           </button>
+           {/* Only show Edit button if I am the Owner */}
+           {isOwner && (
+               <button onClick={() => isEditing ? handleSave() : setIsEditing(true)} 
+                 style={{ 
+                   display: 'flex', gap: '8px', padding: '10px 24px', 
+                   background: isEditing ? '#10b981' : '#0f284e', 
+                   color: 'white', border: 'none', borderRadius: '50px', 
+                   fontWeight: 'bold', cursor: 'pointer', transition: '0.3s',
+                   boxShadow: '0 4px 15px rgba(15, 40, 78, 0.2)'
+                 }}>
+                 {isEditing ? <><Save size={18}/> Save Changes</> : <><Edit2 size={18}/> Edit Profile</>}
+               </button>
+           )}
         </nav>
 
         <div style={{ padding: '30px', maxWidth: '1100px', margin: '0 auto' }}>
            
-           {/* 1. HEADER CARD (Professional & Clean) */}
+           {/* 1. HEADER CARD */}
            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden', marginBottom: '25px', position: 'relative' }}>
-              
-              {/* Cover Banner - Deep Navy Blue */}
-              <div style={{ height: '160px', background: '#0f284e' }}></div>
-              
-              <div style={{ padding: '0 40px 30px', display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '30px', flexWrap: 'wrap' }}>
+             
+             {/* Cover Banner */}
+             <div style={{ height: '160px', background: '#0f284e' }}></div>
+             
+             <div style={{ padding: '0 40px 30px', display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '30px', flexWrap: 'wrap' }}>
                  
-                 {/* Photo Upload Section */}
+                 {/* Photo Section */}
                  <div style={{ marginTop: '-70px', position: 'relative', flexShrink: 0 }}>
                     <div style={{ padding: '4px', background: 'white', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
                         <img 
@@ -153,8 +207,8 @@ const Profile = () => {
                         />
                     </div>
                     
-                    {/* Camera Icon - Only in Edit Mode */}
-                    {isEditing && (
+                    {/* Camera Icon - Only visible to Owner in Edit Mode */}
+                    {isEditing && isOwner && (
                       <div 
                         onClick={() => fileInputRef.current.click()}
                         style={{ 
@@ -163,7 +217,6 @@ const Profile = () => {
                           borderRadius: '50%', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                           border: '2px solid white'
                         }}
-                        title="Change Photo"
                       >
                         <Camera size={20} />
                       </div>
@@ -171,7 +224,7 @@ const Profile = () => {
                     <input type="file" ref={fileInputRef} onChange={handleImageUpload} style={{ display: 'none' }} accept="image/*" />
                  </div>
                  
-                 {/* Name, Role & Batch (Aligned Properly) */}
+                 {/* Info Section */}
                  <div style={{ flex: 1, paddingBottom: '5px', minWidth: '250px' }}>
                     {isEditing ? (
                         <div style={{ marginBottom: '10px' }}>
@@ -182,7 +235,6 @@ const Profile = () => {
                         <h1 style={{ margin: '0 0 8px', fontSize: '32px', color: '#0f284e', fontWeight: 'bold' }}>{user.name}</h1>
                     )}
                     
-                    {/* Badges Row */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
                          <span style={badgeStyle}>
                             <Briefcase size={14} /> {user.role}
@@ -200,24 +252,24 @@ const Profile = () => {
                     </div>
                  </div>
 
-                 {/* Email Display (Right Side) */}
+                 {/* Email Display */}
                  <div style={{ paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px', color: '#666', fontSize: '14px' }}>
                      <Mail size={16} /> {user.email}
                  </div>
-              </div>
+             </div>
            </div>
 
-           {/* 2. DETAILS GRID - Clean Alignment */}
+           {/* 2. DETAILS GRID */}
            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' }}>
-              
-              {/* Left Column: About & Professional */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+             
+             {/* Left Column */}
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                  
                  {/* About Card */}
                  <div style={cardStyle}>
                     <h3 style={sectionTitle}>About Me</h3>
                     {isEditing ? 
-                      <textarea name="bio" value={formData.bio || ''} onChange={handleChange} rows="4" style={{...inputStyle, height: 'auto', lineHeight: '1.5'}} placeholder="Write a short professional bio..." /> : 
+                      <textarea name="bio" value={formData.bio || ''} onChange={handleChange} rows="4" style={{...inputStyle, height: 'auto', lineHeight: '1.5'}} placeholder="Write a short bio..." /> : 
                       <p style={{ color: '#4b5563', lineHeight: '1.7', fontSize: '15px' }}>{user.bio || 'No bio added yet.'}</p>
                     }
                  </div>
@@ -242,10 +294,10 @@ const Profile = () => {
                        </div>
                     </div>
                  </div>
-              </div>
+             </div>
 
-              {/* Right Column: Skills & Social */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+             {/* Right Column */}
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                  
                  {/* Skills Card */}
                  <div style={cardStyle}>
@@ -258,36 +310,36 @@ const Profile = () => {
                     }
                  </div>
 
-                 {/* Social Links Card (FIXED) */}
+                 {/* Social Links Card */}
                  <div style={cardStyle}>
                     <h3 style={sectionTitle}><LinkIcon size={18} style={{marginRight:'8px'}}/> Social Links</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                       
-                       <div style={socialRow}>
-                           <Github size={18}/> 
-                           {isEditing ? (
+                        
+                        <div style={socialRow}>
+                            <Github size={18}/> 
+                            {isEditing ? (
                                <input name="github" value={formData.socialLinks?.github || ''} onChange={handleSocialChange} style={inputStyle} placeholder="GitHub URL"/>
-                           ) : (
+                            ) : (
                                <a href={user.socialLinks?.github || '#'} target="_blank" rel="noreferrer" style={linkStyle}>
                                    {user.socialLinks?.github ? 'GitHub Profile' : <span style={{color:'#ccc', fontWeight:'normal'}}>Not Added</span>}
                                </a>
-                           )}
-                       </div>
-                       
-                       <div style={socialRow}>
-                           <Linkedin size={18} color="#0077b5"/> 
-                           {isEditing ? (
+                            )}
+                        </div>
+                        
+                        <div style={socialRow}>
+                            <Linkedin size={18} color="#0077b5"/> 
+                            {isEditing ? (
                                <input name="linkedin" value={formData.socialLinks?.linkedin || ''} onChange={handleSocialChange} style={inputStyle} placeholder="LinkedIn URL"/>
-                           ) : (
+                            ) : (
                                <a href={user.socialLinks?.linkedin || '#'} target="_blank" rel="noreferrer" style={linkStyle}>
                                    {user.socialLinks?.linkedin ? 'LinkedIn Profile' : <span style={{color:'#ccc', fontWeight:'normal'}}>Not Added</span>}
                                </a>
-                           )}
-                       </div>
+                            )}
+                        </div>
 
                     </div>
                  </div>
-              </div>
+             </div>
 
            </div>
         </div>
