@@ -4,9 +4,9 @@ const Mentorship = require('../models/Mentorship');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const sendEmail = require('../utils/sendEmail');
+const sendEmail = require('../utils/sendEmail'); 
 
-// 1. REGISTER (Step 1: Save User & Send OTP)
+// 1. REGISTER LOGIC (Fixed for Speed & Retry)
 exports.register = async (req, res) => {
     try {
         const { 
@@ -14,66 +14,91 @@ exports.register = async (req, res) => {
             department, batch, rollNumber, currentCompany, jobRole 
         } = req.body;
 
-        // Domain Check
+        // --- A. DOMAIN VALIDATION ---
         if (!email.endsWith('@kgcas.com')) {
-            return res.status(400).json({ message: "Only @kgcas.com emails allowed." });
+            return res.status(400).json({ message: "Registration restricted to @kgcas.com emails only." });
         }
 
         let user = await User.findOne({ email });
-        if (user) return res.status(400).json({ message: "User already exists" });
+
+        // --- B. CHECK EXISTING USER ---
+        if (user) {
+            // If user is already verified, block them (Account actually exists)
+            if (user.isVerified) {
+                return res.status(400).json({ message: "User already exists. Please Login." });
+            }
+            // If user exists but is NOT verified, we allow Re-Registration (Overwrite old data)
+            // This fixes the "User already exists" issue when user leaves and comes back
+        }
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
+        const otp = Math.floor(1000 + Math.random() * 9000).toString(); // 4-Digit PIN
 
-        // --- GENERATE 4-DIGIT PIN ---
-        const otp = Math.floor(1000 + Math.random() * 9000).toString(); 
+        if (user && !user.isVerified) {
+            // --- UPDATE EXISTING UNVERIFIED USER ---
+            user.name = name;
+            user.password = hashedPassword;
+            user.role = role;
+            user.department = department;
+            user.batch = batch;
+            user.verificationToken = otp; // Update with NEW OTP
+            // Update conditional fields
+            user.rollNumber = role === 'Student' ? rollNumber : undefined;
+            user.currentCompany = role === 'Alumni' ? currentCompany : undefined;
+            user.jobRole = role === 'Alumni' ? jobRole : undefined;
+            
+            await user.save();
+        } else {
+            // --- CREATE NEW USER ---
+            user = new User({
+                name, email, password: hashedPassword, role,
+                isApproved: false, 
+                isVerified: false,
+                verificationToken: otp,
+                department, batch, 
+                rollNumber: role === 'Student' ? rollNumber : undefined,
+                currentCompany: role === 'Alumni' ? currentCompany : undefined,
+                jobRole: role === 'Alumni' ? jobRole : undefined
+            });
+            await user.save();
+        }
 
-        user = new User({
-            name, email, password: hashedPassword, role,
-            isApproved: false,
-            isVerified: false, // User is created but LOCKED
-            verificationToken: otp, // Store the PIN temporarily
-            department, batch, 
-            rollNumber: role === 'Student' ? rollNumber : undefined,
-            currentCompany: role === 'Alumni' ? currentCompany : undefined,
-            jobRole: role === 'Alumni' ? jobRole : undefined
-        });
-
-        await user.save();
-
-        // Send Email
-        await sendEmail(
+        // --- C. SEND OTP EMAIL (Background Process) ---
+        // Removed 'await' so frontend gets instant response
+        sendEmail(
             user.email, 
-            "Your Verification PIN", 
-            `Your 4-digit verification PIN is: ${otp}`
-        );
+            "Your Verification PIN - AlumniConnect", 
+            `Your Verification PIN is: ${otp}\n\nGo back to the app and enter this code to verify your account.`
+        ).catch(err => console.error("Email send failed:", err));
 
-        res.status(200).json({ message: "OTP sent to your email!" });
+        // Respond immediately (Speed Fix)
+        res.status(201).json({ message: "OTP sent to your email!" });
 
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: "Server Error", error: error.message });
     }
 };
 
-// 2. VERIFY OTP (Step 2: Unlock User)
+// 2. VERIFY OTP LOGIC
 exports.verifyOtp = async (req, res) => {
     try {
         const { email, otp } = req.body;
-
         const user = await User.findOne({ email });
+
         if (!user) return res.status(400).json({ message: "User not found" });
 
         // Check PIN
         if (user.verificationToken !== otp) {
-            return res.status(400).json({ message: "Invalid PIN. Try again." });
+            return res.status(400).json({ message: "Invalid PIN" });
         }
 
-        // Verify Success
         user.isVerified = true;
-        user.verificationToken = undefined; // Remove PIN
+        user.verificationToken = undefined; 
         await user.save();
 
-        res.status(200).json({ message: "Email Verified! Waiting for Admin Approval." });
+        res.status(200).json({ message: "Verified Successfully! You can now login." });
 
     } catch (error) {
         res.status(500).json({ message: "Server Error" });
@@ -91,11 +116,12 @@ exports.login = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: "Invalid Credentials" });
 
-        // Check Verification First
+        // Check Verification
         if (!user.isVerified) {
-            return res.status(400).json({ message: "Please verify your email first." });
+            return res.status(400).json({ message: "Email not verified. Please verify your OTP." });
         }
 
+        // Check Admin Approval
         if (user.isApproved === false) {
             return res.status(403).json({ message: "Your account is pending Admin approval." });
         }
