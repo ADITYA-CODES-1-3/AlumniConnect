@@ -9,7 +9,12 @@ const userSchema = new mongoose.Schema({
         enum: ['Student', 'Alumni', 'Admin'], 
         default: 'Student' 
     },
-    isApproved: { type: Boolean, default: false },
+    
+    // --- NEW VERIFICATION FIELDS ---
+    isVerified: { type: Boolean, default: false }, // Starts as false
+    verificationToken: { type: String },           // Stores the secret code
+    
+    isApproved: { type: Boolean, default: false }, // Admin approval flag
     
     // IMAGE STORAGE (Base64 String)
     profileImage: { 

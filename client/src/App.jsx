@@ -3,16 +3,15 @@ import { Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
 // --- IMPORT ALL PAGES ---
-import Home from './pages/Home'; // Landing Page
+import Home from './pages/Home'; 
 import Login from './pages/Login';
-import Register from './pages/Register';
+import Register from './pages/Register'; // Register now handles OTP verification
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Jobs from './pages/Jobs';
 import PostJob from './pages/PostJob';
 import Profile from './pages/Profile';
 import Mentorship from './pages/Mentorship';
-
 import Chat from './pages/Chat';
 
 // --- IMPORT COMPONENTS ---
@@ -29,18 +28,18 @@ function App() {
         {/* PUBLIC ROUTES (Open)      */}
         {/* ============================== */}
         
-        {/* Root URL -> Landing Page (MUKKIYAM) */}
+        {/* Root URL -> Landing Page */}
         <Route path="/" element={<Home />} />
         
         {/* Auth Pages */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
-        <Route path="/chat/:receiverId" element={<PrivateRoute><Chat /></PrivateRoute>} />
-        
         {/* ============================== */}
         {/* PROTECTED ROUTES (Locked)   */}
         {/* ============================== */}
+        
+        <Route path="/chat/:receiverId" element={<PrivateRoute><Chat /></PrivateRoute>} />
         
         {/* 1. Dashboard */}
         <Route 

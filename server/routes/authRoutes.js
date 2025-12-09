@@ -4,23 +4,33 @@ const auth = require('../middleware/authMiddleware'); // Import Security Guard
 
 // Import Controller Functions
 const { 
-    register, login, getPendingUsers, approveUser, 
-    getAllUsers, getAdminStats, 
-    getProfile, updateProfile // <--- Import New Functions
+    register, 
+    login, 
+    verifyOtp,      // <--- NEW: Import the OTP verification function
+    getPendingUsers, 
+    approveUser, 
+    getAllUsers, 
+    getAdminStats, 
+    getProfile, 
+    updateProfile 
 } = require('../controllers/authController');
 
-// Public Routes
-router.post('/register', register);
-router.post('/login', login);
+// --- PUBLIC ROUTES (No Login Required) ---
+router.post('/register', register);       // Step 1: Submit Details -> Get OTP
+router.post('/verify-otp', verifyOtp);    // Step 2: Submit OTP -> Verify Account <--- NEW ROUTE
+router.post('/login', login);             // Step 3: Login (Checks if verified & approved)
 
-// Protected Routes (Token Required)
-router.get('/pending-users', getPendingUsers); // (Admin should verify token really, but leaving simple for now)
-router.put('/approve/:id', approveUser);
-router.get('/users', getAllUsers);
-router.get('/stats', getAdminStats);
+// --- PROTECTED ROUTES (Token Required) ---
 
-// PROFILE ROUTES (NEW)
-router.get('/me', auth, getProfile);        // Get logged in user's profile
+// Profile Management
+router.get('/me', auth, getProfile);          // Get logged in user's profile
 router.put('/me/update', auth, updateProfile); // Update logged in user's profile
+
+// Admin / Directory Features
+// (Note: In a real app, you should add 'auth' middleware to these too!)
+router.get('/users', getAllUsers);
+router.get('/pending-users', getPendingUsers);
+router.put('/approve/:id', approveUser);
+router.get('/stats', getAdminStats);
 
 module.exports = router;
