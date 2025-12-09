@@ -13,11 +13,28 @@ const socket = io.connect(SERVER_URL);
 const Mentorship = () => {
   const [dataList, setDataList] = useState([]); 
   const [myRequests, setMyRequests] = useState([]); 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  // --- RESPONSIVE FIX 1: Initialize based on screen size ---
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
+  
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
   const [searchTerm, setSearchTerm] = useState('');
   
   const navigate = useNavigate(); 
+
+  // --- RESPONSIVE FIX 2: Handle Window Resize ---
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(false);
+      } else {
+        setIsSidebarOpen(true);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // --- 1. ROBUST SOCKET CONNECTION ---
   useEffect(() => {
@@ -146,11 +163,24 @@ const Mentorship = () => {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8f9fa' }}>
-      <Sidebar isOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
       
+      {/* RESPONSIVE FIX 3: Fixed Position Wrapper for Sidebar to allow overlap on mobile */}
       <div style={{ 
-        marginLeft: isSidebarOpen ? '290px' : '0', 
-        width: isSidebarOpen ? 'calc(100% - 290px)' : '100%',
+        position: 'fixed', 
+        top: 0, 
+        left: 0, 
+        height: '100%', 
+        zIndex: 100,
+        transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.3s ease'
+      }}>
+        <Sidebar isOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+      </div>
+      
+      {/* RESPONSIVE FIX 4: Dynamic Margin and Width */}
+      <div style={{ 
+        marginLeft: isSidebarOpen && window.innerWidth > 768 ? '290px' : '0', 
+        width: isSidebarOpen && window.innerWidth > 768 ? 'calc(100% - 290px)' : '100%',
         transition: 'all 0.4s ease'
       }}>
         
@@ -162,7 +192,7 @@ const Mentorship = () => {
            </div>
            
            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-             <span style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', background: user.role === 'Student' ? '#e0f2fe' : '#fffbeb', color: user.role === 'Student' ? '#0369a1' : '#92400e', border: `1px solid ${user.role === 'Student' ? '#bae6fd' : '#fde047'}` }}>
+             <span style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', background: user.role === 'Student' ? '#e0f2fe' : '#fffbeb', color: user.role === 'Student' ? '#0369a1' : '#92400e', border: `1px solid ${user.role === 'Student' ? '#bae6fd' : '#fde047'}`, display: window.innerWidth < 640 ? 'none' : 'block' }}>
                 {user.role}
              </span>
              <img src={logo} alt="Profile" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #d4af37', padding: '2px' }} />
@@ -181,7 +211,7 @@ const Mentorship = () => {
               </p>
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', background: 'white', padding: '12px 20px', borderRadius: '30px', width: '350px', border: '1px solid #e5e7eb', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', background: 'white', padding: '12px 20px', borderRadius: '30px', width: window.innerWidth < 640 ? '100%' : '350px', border: '1px solid #e5e7eb', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
                <Search size={18} color="#999" />
                <input type="text" placeholder="Search..." onChange={(e) => setSearchTerm(e.target.value)} style={{ border: 'none', background: 'transparent', marginLeft: '10px', outline: 'none', width: '100%', color: '#333', fontSize: '15px' }} />
             </div>
@@ -189,7 +219,7 @@ const Mentorship = () => {
 
           {/* --- ALUMNI VIEW --- */}
           {user?.role === 'Alumni' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '30px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '30px' }}>
               {filteredData.length === 0 ? <p style={{color: '#999', fontSize: '18px'}}>No pending requests.</p> : filteredData.map((req) => (
                 <div key={req._id} style={{ background: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', borderLeft: `6px solid ${req.status === 'Accepted' ? '#10b981' : '#fbbf24'}`, position: 'relative' }}>
                   
@@ -240,7 +270,7 @@ const Mentorship = () => {
 
           {/* --- STUDENT VIEW --- */}
           {user?.role === 'Student' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '30px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '30px' }}>
               {filteredData.length === 0 ? <p style={{color: '#999', fontSize: '18px'}}>No alumni found matching your search.</p> : filteredData.map((alum) => {
                 const request = getRequestInfo(alum._id);
                 const status = request ? request.status : null; 
