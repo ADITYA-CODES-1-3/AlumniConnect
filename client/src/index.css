@@ -10,7 +10,7 @@
   --primary-gold: #d4af37;
   --primary-gold-hover: #b4860b;
   --primary-navy-hover: #1a3b6e;
-  --bg-light: #f8f9fa;
+  --bg-light: #f8f9fa; /* App Background Color */
   --text-dark: #1f2937;
   --text-gray: #6b7280;
   --white: #ffffff;
@@ -20,7 +20,7 @@
   --radius-md: 10px;
   --radius-lg: 16px;
 
-  /* Safe Area Variables for Phones with Notches/Gestures */
+  /* Safe Area for iPhone X+ Home Bar */
   --safe-bottom: env(safe-area-inset-bottom, 20px);
 }
 
@@ -29,16 +29,16 @@
   padding: 0;
   box-sizing: border-box;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  
   /* Remove blue tap highlight on mobile */
   -webkit-tap-highlight-color: transparent;
 }
 
-/* --- THE FIX: LOCK THE BODY, SCROLL THE ROOT --- */
+/* --- FIX: WHITE BAR & GESTURE SCROLLING --- */
 html {
   height: 100%;
   width: 100%;
-  background-color: var(--bg-light); /* Hides white bar if bounce happens */
+  /* Critical: Matches app background so 'bounce' doesn't show white */
+  background-color: var(--bg-light); 
 }
 
 body {
@@ -47,18 +47,18 @@ body {
   background-color: var(--bg-light);
   color: var(--text-dark);
   
-  /* CRITICAL: Lock body scroll to prevent browser "rubber banding" */
-  overflow: hidden; 
+  /* Prevent 'rubber-band' scroll on the body itself */
   overscroll-behavior-y: none; 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
-  /* The root becomes the main scrollable window */
+  /* The root becomes the scrolling container */
   height: 100%;
   width: 100%;
-  overflow-y: auto; /* Enables scrolling for the app content */
+  /* Allow vertical scroll for content, hide horizontal */
+  overflow-y: auto; 
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
@@ -74,16 +74,13 @@ a {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 10px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: var(--primary-navy);
 }
@@ -93,8 +90,9 @@ a {
    ========================================= */
 
 .login-page-wrapper {
-  /* Use 100% min-height because root is now the scroll container */
-  min-height: 100%; 
+  /* FIX: Use 100dvh (Dynamic Viewport Height) to fit mobile screens perfectly */
+  min-height: 100dvh; 
+  width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
