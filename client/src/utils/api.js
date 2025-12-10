@@ -29,3 +29,7 @@ api.interceptors.request.use((config) => {
 // Export SERVER_URL so Chat & Mentorship pages can use it
 export { SERVER_URL }; 
 export default api;
+
+export const fetchEvents = () => api.get('/events/all');
+export const createEvent = (eventData) => api.post('/events/create', eventData);
+export const registerEvent = (eventId) => api.post(`/events/register/${eventId}`);

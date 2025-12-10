@@ -1,292 +1,265 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams } from 'react-router-dom'; // Import to read ID from URL
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
-import Sidebar from '../components/Sidebar';
+import Sidebar from '../components/Sidebar';       
+import AdminSidebar from '../components/AdminSidebar'; 
 import { Briefcase, Code, Link as LinkIcon, Save, Edit2, Github, Linkedin, Menu, Camera, MapPin, Calendar, User as UserIcon, Mail } from 'lucide-react';
 
 const Profile = () => {
-  const { id } = useParams(); // Get ID from URL parameters
+  const { id } = useParams();
+  const navigate = useNavigate(); // Hook for redirection
+
   const [user, setUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
   
-  // Track if the logged-in user owns this profile
+  // Get currently logged-in user to check role
+  const [currentUser, setCurrentUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('user')); } catch (e) { return null; }
+  });
   const [isOwner, setIsOwner] = useState(false); 
 
-  // Initial Empty State
   const [formData, setFormData] = useState({
-    name: '',
-    bio: '',
-    about: '',
-    location: '',
-    skills: [],
+    name: '', bio: '', about: '', location: '', skills: [],
     socialLinks: { github: '', linkedin: '', website: '' },
-    profileImage: '',
-    currentCompany: '', 
-    jobRole: '',
-    department: '',
-    rollNumber: ''
+    profileImage: '', currentCompany: '', jobRole: '', department: '', rollNumber: ''
   });
   
   const fileInputRef = useRef(null);
 
-  // 1. Fetch Profile Data (Logic Updated)
+  // --- RESPONSIVE SIDEBAR HANDLER ---
   useEffect(() => {
-    fetchProfile();
-  }, [id]); // Re-run when ID changes
+    const handleResize = () => {
+        if (window.innerWidth < 768) setIsSidebarOpen(false);
+        else setIsSidebarOpen(true);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-  const fetchProfile = async () => {
-    try {
-      let data;
-      
-      if (id) {
-        // CASE A: Viewing someone else (Read-Only)
-        const res = await api.get(`/auth/users?id=${id}`);
+  // --- FETCH PROFILE ---
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        let data;
         
-        // The API returns an array for search, so pick the correct user
-        if (Array.isArray(res.data)) {
-           data = res.data.find(u => u._id === id);
-        } else {
+        // If viewing own profile (no ID or ID matches current user)
+        if (!id || (currentUser && id === currentUser._id)) {
+           const res = await api.get('/auth/me');
            data = res.data;
+           setIsOwner(true);
+        } else {
+           // Viewing someone else's profile
+           const res = await api.get(`/auth/users?id=${id}`);
+           // API returns array for search, extract single user
+           data = Array.isArray(res.data) ? res.data.find(u => u._id === id) : res.data;
+           setIsOwner(false);
         }
+
+        if (!data) return toast.error("User not found");
+
+        setUser(data);
         
-        setIsOwner(false); // It's not my profile
-      } else {
-        // CASE B: Viewing myself (Editable)
-        const res = await api.get('/auth/me');
-        data = res.data;
-        setIsOwner(true); // It is my profile
+        setFormData({
+          name: data.name || '',
+          bio: data.bio || '',
+          about: data.about || '',
+          location: data.location || '',
+          skills: data.skills || [],
+          socialLinks: data.socialLinks || { github: '', linkedin: '', website: '' },
+          profileImage: data.profileImage || '',
+          currentCompany: data.currentCompany || '',
+          jobRole: data.jobRole || '',
+          department: data.department || '',
+          rollNumber: data.rollNumber || ''
+        });
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to load profile');
       }
+    };
+    fetchProfile();
+  }, [id, currentUser]);
 
-      if (!data) {
-        toast.error("User not found");
-        return;
-      }
-
-      setUser(data);
-      
-      // Initialize Form Data safely
-      setFormData({
-        name: data.name || '',
-        bio: data.bio || '',
-        about: data.about || '',
-        location: data.location || '',
-        skills: data.skills || [],
-        socialLinks: data.socialLinks || { github: '', linkedin: '', website: '' },
-        profileImage: data.profileImage || '',
-        currentCompany: data.currentCompany || '',
-        jobRole: data.jobRole || '',
-        department: data.department || '',
-        rollNumber: data.rollNumber || ''
-      });
-      
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to load profile');
-    }
-  };
-
-  // 2. Handle Text Input (Only if Owner)
   const handleChange = (e) => {
     if (!isOwner) return; 
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
   
-  // 3. Handle Social Links (Only if Owner)
   const handleSocialChange = (e) => {
     if (!isOwner) return;
-    setFormData({
-      ...formData,
-      socialLinks: { 
-        ...formData.socialLinks, 
-        [e.target.name]: e.target.value 
-      }
-    });
+    setFormData({ ...formData, socialLinks: { ...formData.socialLinks, [e.target.name]: e.target.value } });
   };
 
-  // 4. Handle Image Upload (Only if Owner)
   const handleImageUpload = (e) => {
     if (!isOwner) return;
-
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 4 * 1024 * 1024) {
-        toast.error("Image size too large! Max 4MB.");
-        return;
-      }
-
+      if (file.size > 4 * 1024 * 1024) return toast.error("Image size too large! Max 4MB.");
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, profileImage: reader.result }));
-      };
+      reader.onloadend = () => setFormData((prev) => ({ ...prev, profileImage: reader.result }));
     }
   };
 
-  // 5. Save Changes (Only if Owner)
   const handleSave = async () => {
     if (!isOwner) return;
-
     try {
       const updatedData = { ...formData };
-      
-      // Convert skills string to array if edited as text
       if (typeof updatedData.skills === 'string') {
         updatedData.skills = updatedData.skills.split(',').map(s => s.trim()).filter(s => s);
       }
-      
       const res = await api.put('/auth/me/update', updatedData);
       setUser(res.data.user);
       setIsEditing(false);
       toast.success('Profile Updated Successfully!');
-    } catch (err) {
-      console.error(err);
-      toast.error('Update Failed.');
-    }
+    } catch (err) { toast.error('Update Failed.'); }
   };
 
-  if (!user) return <div style={{ padding: '50px', textAlign: 'center', color: '#0f284e' }}>Loading Profile...</div>;
+  // --- FIX: Handle Admin Sidebar Navigation ---
+  // When an Admin is on the Profile page and clicks a sidebar link, 
+  // we redirect them back to the Admin Dashboard.
+  const handleAdminSidebarClick = (tabName) => {
+    navigate('/admin-dashboard'); 
+  };
+
+  if (!user) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#0f284e' }}>Loading...</div>;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8f9fa', display: 'flex' }}>
+    <div style={{ minHeight: '100vh', background: '#f8f9fa', overflowX: 'hidden' }}>
       
-      {/* Sidebar Overlay for Mobile */}
-      <div className={isSidebarOpen ? "sidebar-open" : "sidebar-closed"}>
-        <Sidebar isOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+      {/* 1. SMART SIDEBAR SWITCHING */}
+      <div style={{ 
+        position: 'fixed', top: 0, left: 0, height: '100%', zIndex: 100, 
+        transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.3s ease'
+      }}>
+        {/* If Admin logged in, show AdminSidebar with redirection logic */}
+        {currentUser?.role === 'Admin' ? (
+            <AdminSidebar 
+                isOpen={isSidebarOpen} 
+                toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                activeTab="" // No active tab while on Profile page
+                setActiveTab={handleAdminSidebarClick} // Redirect on click
+            />
+        ) : (
+            <Sidebar isOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        )}
       </div>
       
+      {/* 2. MAIN CONTENT AREA */}
       <div style={{ 
-        flex: 1,
-        marginLeft: isSidebarOpen ? '290px' : '0', 
+        marginLeft: isSidebarOpen && window.innerWidth > 768 ? '290px' : '0', 
         width: '100%',
         transition: 'all 0.4s ease'
-      }} className="main-content">
+      }}>
         
         {/* Navbar */}
-        <nav style={{ background: 'white', padding: '0 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '70px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 40 }}>
-           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <nav style={{ background: 'white', padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '70px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 40 }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0f284e' }}><Menu size={24} /></button>
-            <h2 style={{ margin: 0, color: '#0f284e', fontSize: '20px', fontWeight: 'bold' }}>
+            <h2 style={{ margin: 0, color: '#0f284e', fontSize: '18px', fontWeight: 'bold' }}>
                {isOwner ? "My Profile" : `${user.name}'s Profile`}
             </h2>
            </div>
            
-           {/* Only show Edit button if I am the Owner */}
            {isOwner && (
                <button onClick={() => isEditing ? handleSave() : setIsEditing(true)} 
                  style={{ 
-                   display: 'flex', gap: '8px', padding: '10px 24px', 
+                   display: 'flex', gap: '8px', padding: '8px 20px', 
                    background: isEditing ? '#10b981' : '#0f284e', 
                    color: 'white', border: 'none', borderRadius: '50px', 
-                   fontWeight: 'bold', cursor: 'pointer', transition: '0.3s',
-                   boxShadow: '0 4px 15px rgba(15, 40, 78, 0.2)'
+                   fontWeight: 'bold', cursor: 'pointer', transition: '0.3s', fontSize: '14px',
+                   boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
                  }}>
-                 {isEditing ? <><Save size={18}/> Save Changes</> : <><Edit2 size={18}/> Edit Profile</>}
+                 {isEditing ? <><Save size={16}/> Save</> : <><Edit2 size={16}/> Edit</>}
                </button>
            )}
         </nav>
 
-        <div style={{ padding: '30px', maxWidth: '1100px', margin: '0 auto' }}>
+        <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto' }}>
            
-           {/* 1. HEADER CARD */}
+           {/* HEADER CARD */}
            <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden', marginBottom: '25px', position: 'relative' }}>
              
              {/* Cover Banner */}
-             <div style={{ height: '160px', background: '#0f284e' }}></div>
+             <div style={{ height: '140px', background: 'linear-gradient(135deg, #0f284e 0%, #1e3a8a 100%)' }}></div>
              
-             <div style={{ padding: '0 40px 30px', display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: '30px', flexWrap: 'wrap' }}>
+             <div style={{ padding: '0 30px 30px', display: 'flex', flexDirection: window.innerWidth < 600 ? 'column' : 'row', alignItems: window.innerWidth < 600 ? 'center' : 'flex-end', gap: '25px', marginTop: '-60px' }}>
                  
-                 {/* Photo Section */}
-                 <div style={{ marginTop: '-70px', position: 'relative', flexShrink: 0 }}>
+                 {/* Photo */}
+                 <div style={{ position: 'relative', flexShrink: 0 }}>
                     <div style={{ padding: '4px', background: 'white', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
                         <img 
                           src={formData.profileImage || `https://ui-avatars.com/api/?name=${user.name}&background=0D8ABC&color=fff&size=200`} 
                           alt="Profile" 
-                          style={{ width: '140px', height: '140px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #f0f0f0' }} 
+                          style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #f0f0f0' }} 
                         />
                     </div>
-                    
-                    {/* Camera Icon - Only visible to Owner in Edit Mode */}
                     {isEditing && isOwner && (
-                      <div 
-                        onClick={() => fileInputRef.current.click()}
-                        style={{ 
-                          position: 'absolute', bottom: '10px', right: '5px', 
-                          background: '#d4af37', color: 'white', padding: '10px', 
-                          borderRadius: '50%', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                          border: '2px solid white'
-                        }}
-                      >
-                        <Camera size={20} />
+                      <div onClick={() => fileInputRef.current.click()} style={{ position: 'absolute', bottom: '5px', right: '0', background: '#d4af37', color: 'white', padding: '8px', borderRadius: '50%', cursor: 'pointer', border: '2px solid white' }}>
+                        <Camera size={18} />
                       </div>
                     )}
                     <input type="file" ref={fileInputRef} onChange={handleImageUpload} style={{ display: 'none' }} accept="image/*" />
                  </div>
                  
-                 {/* Info Section */}
-                 <div style={{ flex: 1, paddingBottom: '5px', minWidth: '250px' }}>
+                 {/* Info */}
+                 <div style={{ flex: 1, textAlign: window.innerWidth < 600 ? 'center' : 'left', width: '100%' }}>
                     {isEditing ? (
                         <div style={{ marginBottom: '10px' }}>
                             <label style={labelStyle}>Full Name</label>
-                            <input name="name" value={formData.name || ''} onChange={handleChange} style={{...inputStyle, fontSize: '20px', fontWeight: 'bold'}} />
+                            <input name="name" value={formData.name || ''} onChange={handleChange} style={{...inputStyle, fontSize: '18px', fontWeight: 'bold'}} />
                         </div>
                     ) : (
-                        <h1 style={{ margin: '0 0 8px', fontSize: '32px', color: '#0f284e', fontWeight: 'bold' }}>{user.name}</h1>
+                        <h1 style={{ margin: '0 0 5px', fontSize: '28px', color: '#0f284e', fontWeight: 'bold' }}>{user.name}</h1>
                     )}
                     
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
-                         <span style={badgeStyle}>
-                            <Briefcase size={14} /> {user.role}
-                         </span>
-                         
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: window.innerWidth < 600 ? 'center' : 'flex-start', marginBottom: '10px' }}>
+                         <span style={badgeStyle}><Briefcase size={14} /> {user.role}</span>
                          {user.role === 'Student' && user.batch && (
-                            <span style={{...badgeStyle, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a'}}>
-                                <Calendar size={14} /> Batch of {user.batch}
+                            <span style={{...badgeStyle, background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a'}}>
+                                <Calendar size={14} /> Batch {user.batch}
                             </span>
                          )}
-
                          <span style={{...badgeStyle, background: 'transparent', border: '1px solid #e5e7eb', color: '#666'}}>
-                            <MapPin size={14} /> {user.role === 'Student' ? 'Campus' : 'Alumni Network'}
+                            <MapPin size={14} /> {user.role === 'Student' ? 'KGCAS Campus' : 'Alumni Network'}
                          </span>
                     </div>
-                 </div>
 
-                 {/* Email Display */}
-                 <div style={{ paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px', color: '#666', fontSize: '14px' }}>
-                     <Mail size={16} /> {user.email}
+                    <div style={{ color: '#666', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: window.innerWidth < 600 ? 'center' : 'flex-start' }}>
+                        <Mail size={14} /> {user.email}
+                    </div>
                  </div>
              </div>
            </div>
 
-           {/* 2. DETAILS GRID */}
-           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' }}>
+           {/* DETAILS GRID */}
+           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '25px' }}>
              
-             {/* Left Column */}
+             {/* Left */}
              <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-                 
-                 {/* About Card */}
                  <div style={cardStyle}>
                     <h3 style={sectionTitle}>About Me</h3>
                     {isEditing ? 
-                      <textarea name="bio" value={formData.bio || ''} onChange={handleChange} rows="4" style={{...inputStyle, height: 'auto', lineHeight: '1.5'}} placeholder="Write a short bio..." /> : 
-                      <p style={{ color: '#4b5563', lineHeight: '1.7', fontSize: '15px' }}>{user.bio || 'No bio added yet.'}</p>
+                      <textarea name="bio" value={formData.bio || ''} onChange={handleChange} rows="4" style={{...inputStyle, height: 'auto'}} placeholder="Write a short bio..." /> : 
+                      <p style={{ color: '#4b5563', lineHeight: '1.6', fontSize: '14px' }}>{user.bio || 'No bio added yet.'}</p>
                     }
                  </div>
 
-                 {/* Work/Academic Info */}
                  <div style={cardStyle}>
-                    <h3 style={sectionTitle}><UserIcon size={18} style={{marginRight:'8px'}}/> {user.role === 'Alumni' ? 'Work Experience' : 'Academic Details'}</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <h3 style={sectionTitle}><UserIcon size={18} style={{marginRight:'8px'}}/> {user.role === 'Alumni' ? 'Experience' : 'Academic Details'}</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                        <div>
-                          <label style={labelStyle}>{user.role === 'Alumni' ? 'Current Company' : 'Department'}</label>
+                          <label style={labelStyle}>{user.role === 'Alumni' ? 'Company' : 'Department'}</label>
                           {isEditing ? 
                              <input name={user.role === 'Alumni' ? 'currentCompany' : 'department'} value={user.role === 'Alumni' ? formData.currentCompany : formData.department} onChange={handleChange} style={inputStyle} /> :
                              <p style={valueStyle}>{user.role === 'Alumni' ? user.currentCompany : user.department || 'N/A'}</p>
                           }
                        </div>
                        <div>
-                          <label style={labelStyle}>{user.role === 'Alumni' ? 'Designation' : 'Roll Number'}</label>
+                          <label style={labelStyle}>{user.role === 'Alumni' ? 'Role' : 'Roll No.'}</label>
                           {isEditing ? 
                              <input name={user.role === 'Alumni' ? 'jobRole' : 'rollNumber'} value={user.role === 'Alumni' ? formData.jobRole : formData.rollNumber} onChange={handleChange} style={inputStyle} /> :
                              <p style={valueStyle}>{user.role === 'Alumni' ? user.jobRole : user.rollNumber || 'N/A'}</p>
@@ -296,47 +269,31 @@ const Profile = () => {
                  </div>
              </div>
 
-             {/* Right Column */}
+             {/* Right */}
              <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-                 
-                 {/* Skills Card */}
                  <div style={cardStyle}>
                     <h3 style={sectionTitle}><Code size={18} style={{marginRight:'8px'}}/> Skills</h3>
                     {isEditing ? 
-                       <input name="skills" value={formData.skills || ''} onChange={handleChange} placeholder="Java, React, Python (Comma separated)" style={inputStyle} /> :
+                       <input name="skills" value={formData.skills || ''} onChange={handleChange} placeholder="e.g. Java, React (Comma separated)" style={inputStyle} /> :
                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                          {user.skills?.length > 0 ? user.skills.map((s, i) => <span key={i} style={skillTag}>{s}</span>) : <span style={{color:'#9ca3af', fontSize: '14px'}}>No skills added.</span>}
+                          {user.skills?.length > 0 ? user.skills.map((s, i) => <span key={i} style={skillTag}>{s}</span>) : <span style={{color:'#999', fontSize:'13px'}}>No skills added.</span>}
                        </div>
                     }
                  </div>
 
-                 {/* Social Links Card */}
                  <div style={cardStyle}>
-                    <h3 style={sectionTitle}><LinkIcon size={18} style={{marginRight:'8px'}}/> Social Links</h3>
+                    <h3 style={sectionTitle}><LinkIcon size={18} style={{marginRight:'8px'}}/> Socials</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        
                         <div style={socialRow}>
                             <Github size={18}/> 
-                            {isEditing ? (
-                               <input name="github" value={formData.socialLinks?.github || ''} onChange={handleSocialChange} style={inputStyle} placeholder="GitHub URL"/>
-                            ) : (
-                               <a href={user.socialLinks?.github || '#'} target="_blank" rel="noreferrer" style={linkStyle}>
-                                   {user.socialLinks?.github ? 'GitHub Profile' : <span style={{color:'#ccc', fontWeight:'normal'}}>Not Added</span>}
-                               </a>
-                            )}
+                            {isEditing ? <input name="github" value={formData.socialLinks?.github || ''} onChange={handleSocialChange} style={inputStyle} placeholder="GitHub URL"/> : 
+                            <a href={user.socialLinks?.github || '#'} target="_blank" rel="noreferrer" style={linkStyle}>{user.socialLinks?.github ? 'GitHub Profile' : <span style={{color:'#ccc'}}>Not Added</span>}</a>}
                         </div>
-                        
                         <div style={socialRow}>
                             <Linkedin size={18} color="#0077b5"/> 
-                            {isEditing ? (
-                               <input name="linkedin" value={formData.socialLinks?.linkedin || ''} onChange={handleSocialChange} style={inputStyle} placeholder="LinkedIn URL"/>
-                            ) : (
-                               <a href={user.socialLinks?.linkedin || '#'} target="_blank" rel="noreferrer" style={linkStyle}>
-                                   {user.socialLinks?.linkedin ? 'LinkedIn Profile' : <span style={{color:'#ccc', fontWeight:'normal'}}>Not Added</span>}
-                               </a>
-                            )}
+                            {isEditing ? <input name="linkedin" value={formData.socialLinks?.linkedin || ''} onChange={handleSocialChange} style={inputStyle} placeholder="LinkedIn URL"/> : 
+                            <a href={user.socialLinks?.linkedin || '#'} target="_blank" rel="noreferrer" style={linkStyle}>{user.socialLinks?.linkedin ? 'LinkedIn Profile' : <span style={{color:'#ccc'}}>Not Added</span>}</a>}
                         </div>
-
                     </div>
                  </div>
              </div>
@@ -349,14 +306,14 @@ const Profile = () => {
 };
 
 // --- STYLES ---
-const cardStyle = { background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', border: '1px solid #f0f0f0' };
-const sectionTitle = { fontSize: '16px', fontWeight: 'bold', color: '#0f284e', marginBottom: '20px', display: 'flex', alignItems: 'center', borderBottom: '1px solid #f3f4f6', paddingBottom: '10px' };
-const inputStyle = { width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none', background: '#fff', transition: 'border 0.2s', color: '#1f2937' };
-const labelStyle = { display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' };
-const valueStyle = { fontSize: '15px', fontWeight: '600', color: '#111827', margin: 0 };
-const skillTag = { background: '#f0f9ff', color: '#0369a1', padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', border: '1px solid #bae6fd' };
-const socialRow = { display: 'flex', alignItems: 'center', gap: '12px', color: '#4b5563' };
-const linkStyle = { color: '#0f284e', textDecoration: 'none', fontSize: '14px', fontWeight: '600', transition: 'color 0.2s', wordBreak: 'break-all' };
-const badgeStyle = { display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: '#e0f2fe', color: '#0369a1', borderRadius: '8px', fontSize: '13px', fontWeight: '700' };
+const cardStyle = { background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', border: '1px solid #f0f0f0' };
+const sectionTitle = { fontSize: '15px', fontWeight: 'bold', color: '#0f284e', marginBottom: '15px', display: 'flex', alignItems: 'center', borderBottom: '1px solid #f3f4f6', paddingBottom: '10px' };
+const inputStyle = { width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none', background: '#fff' };
+const labelStyle = { display: 'block', fontSize: '11px', color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase', fontWeight: '700' };
+const valueStyle = { fontSize: '14px', fontWeight: '600', color: '#111827', margin: 0 };
+const skillTag = { background: '#f0f9ff', color: '#0369a1', padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', border: '1px solid #bae6fd' };
+const socialRow = { display: 'flex', alignItems: 'center', gap: '10px', color: '#4b5563' };
+const linkStyle = { color: '#0f284e', textDecoration: 'none', fontSize: '13px', fontWeight: '600', overflow:'hidden', textOverflow:'ellipsis' };
+const badgeStyle = { display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 12px', background: '#e0f2fe', color: '#0369a1', borderRadius: '6px', fontSize: '12px', fontWeight: '700' };
 
 export default Profile;

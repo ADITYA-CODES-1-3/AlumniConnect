@@ -5,7 +5,7 @@ import { Toaster } from 'react-hot-toast';
 // --- IMPORT ALL PAGES ---
 import Home from './pages/Home'; 
 import Login from './pages/Login';
-import Register from './pages/Register'; // Register now handles OTP verification
+import Register from './pages/Register'; 
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Jobs from './pages/Jobs';
@@ -13,6 +13,9 @@ import PostJob from './pages/PostJob';
 import Profile from './pages/Profile';
 import Mentorship from './pages/Mentorship';
 import Chat from './pages/Chat';
+import Events from './pages/Events';          
+import CreateEvent from './pages/CreateEvent'; 
+import EventDetails from './pages/EventDetails'; // Import the details page
 
 // --- IMPORT COMPONENTS ---
 import PrivateRoute from './components/PrivateRoute';
@@ -20,12 +23,13 @@ import PrivateRoute from './components/PrivateRoute';
 function App() {
   return (
     <div>
+      {/* Toast Notification Wrapper */}
       <Toaster position="top-center" />
       
       <Routes>
         
         {/* ============================== */}
-        {/* PUBLIC ROUTES (Open)      */}
+        {/* PUBLIC ROUTES (Open)           */}
         {/* ============================== */}
         
         {/* Root URL -> Landing Page */}
@@ -36,9 +40,10 @@ function App() {
         <Route path="/register" element={<Register />} />
         
         {/* ============================== */}
-        {/* PROTECTED ROUTES (Locked)   */}
+        {/* PROTECTED ROUTES (Locked)      */}
         {/* ============================== */}
         
+        {/* Chat System */}
         <Route path="/chat/:receiverId" element={<PrivateRoute><Chat /></PrivateRoute>} />
         
         {/* 1. Dashboard */}
@@ -88,6 +93,37 @@ function App() {
           element={
             <PrivateRoute>
               <Mentorship />
+            </PrivateRoute>
+          } 
+        />
+
+        {/* 6. Event Management System */}
+        {/* List of all events */}
+        <Route 
+          path="/events" 
+          element={
+            <PrivateRoute>
+              <Events />
+            </PrivateRoute>
+          } 
+        />
+        
+        {/* Create a new event (Admin/Alumni only - logic inside component) */}
+        <Route 
+          path="/create-event" 
+          element={
+            <PrivateRoute>
+              <CreateEvent />
+            </PrivateRoute>
+          } 
+        />
+
+        {/* Event Details Page (Dynamic ID) */}
+        <Route 
+          path="/events/:id" 
+          element={
+            <PrivateRoute>
+              <EventDetails />
             </PrivateRoute>
           } 
         />

@@ -11,6 +11,7 @@ const authRoutes = require('./routes/authRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const mentorshipRoutes = require('./routes/mentorshipRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const eventRoutes = require('./routes/eventRoutes');
 
 dotenv.config();
 connectDB();
@@ -59,6 +60,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);        
 app.use('/api/mentorship', mentorshipRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/events', eventRoutes);
 
 // --- 4. REAL-TIME CHAT & NOTIFICATION LOGIC ---
 io.on('connection', (socket) => {
