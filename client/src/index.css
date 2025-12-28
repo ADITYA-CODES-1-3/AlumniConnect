@@ -337,47 +337,60 @@ a {
   border-radius: 10px;
 }
 
+/* client/src/index.css - Add/Replace in your Animations section */
+
 /* =========================================
-   4. UTILITIES & ANIMATIONS
+   4. UTILITIES & ANIMATIONS (UPDATED)
    ========================================= */
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+/* A. Animated Gradient Background (Navy Blue Theme) */
+.animate-gradient-navy {
+  background: linear-gradient(135deg, var(--primary-navy), #1e3a8a, #111827, var(--primary-navy));
+  background-size: 400% 400%;
+  animation: gradientMove 15s ease infinite;
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-out forwards;
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-.glass-panel {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+/* B. Subtle Float Animation for Cards */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }
 
-/* Status Badges */
-.badge {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
 }
 
-.badge-student {
-  background: #e0f2fe;
-  color: #0369a1;
-  border: 1px solid #bae6fd;
+/* C. Fade In Up (Used for text appearing) */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.badge-alumni {
-  background: #fffbeb;
-  color: #92400e;
-  border: 1px solid #fde047;
+.animate-fade-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
+/* D. Glassmorphism Card (Better than before) */
+.glass-modern {
+  background: rgba(255, 255, 255, 0.1); /* Transparent White */
+  backdrop-filter: blur(12px); /* Blur effect */
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
 /* =========================================
    5. MOBILE RESPONSIVENESS (FINAL CLEAN FIX)
    ========================================= */
