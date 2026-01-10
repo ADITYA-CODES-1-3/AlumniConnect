@@ -1,362 +1,446 @@
 import React, { useEffect, useState } from 'react';
-import api, { SERVER_URL } from '../utils/api'; // <--- IMPORT SERVER_URL
-import Sidebar from '../components/Sidebar';
-import toast from 'react-hot-toast';
-import { User, CheckCircle, XCircle, Send, Menu, Search, MessageSquare, Clock, Trash2 } from 'lucide-react';
-import logo from '../assets/logo.png';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import io from 'socket.io-client';
+import { 
+  User, CheckCircle, XCircle, Send, Menu, Search, 
+  MessageSquare, Clock, Trash2, Shield, Briefcase 
+} from 'lucide-react';
 
-// --- FIXED: Use Dynamic URL for Production ---
+// Components & Utils
+import api, { SERVER_URL } from '../utils/api';
+import Sidebar from '../components/Sidebar';
+import BlueLightsBackground from '../components/BlueLightsBackground'; // Theme Standard
+import Loader from '../components/Loader'; // Assuming you have a loader or use inline
+
+// --- SOCKET CONNECTION ---
 const socket = io.connect(SERVER_URL); 
 
 const Mentorship = () => {
-  const [dataList, setDataList] = useState([]); 
-  const [myRequests, setMyRequests] = useState([]); 
-  
-  // --- RESPONSIVE FIX 1: Initialize based on screen size ---
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
-  
+  const navigate = useNavigate();
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
-  const [searchTerm, setSearchTerm] = useState('');
   
-  const navigate = useNavigate(); 
+  // State
+  const [dataList, setDataList] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
 
-  // --- RESPONSIVE FIX 2: Handle Window Resize ---
+  // --- RESPONSIVE HANDLER ---
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setIsSidebarOpen(false);
-      } else {
-        setIsSidebarOpen(true);
-      }
-    };
-
+    const handleResize = () => setIsSidebarOpen(window.innerWidth > 1024);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // --- 1. ROBUST SOCKET CONNECTION ---
+  // --- SOCKET & DATA SYNC ---
   useEffect(() => {
-    // Function to join specific user room
-    const joinRoom = () => {
-      if (user?._id) {
-        socket.emit("join_room", user._id);
-      }
-    };
+    if (!user?._id) return;
 
-    // Join on load
-    joinRoom();
+    // 1. Join Room
+    socket.emit("join_room", user._id);
 
-    // Listener for data refresh
+    // 2. Notification Listener
     const handleNotification = () => {
-      toast('List Updated', { icon: '🔔' });
+      toast.success('Mentorship Update Received!', { icon: '🔔' });
       refreshData();
     };
 
-    // Re-join on reconnect (Fixes the "refresh required" issue)
-    socket.on("connect", joinRoom);
     socket.on("receive_notification", handleNotification);
 
-    // Cleanup listeners
+    // 3. Initial Fetch
+    refreshData();
+
     return () => {
-      socket.off("connect", joinRoom);
       socket.off("receive_notification", handleNotification);
     };
   }, [user]);
 
-  // Initial Fetch
-  useEffect(() => {
-    refreshData();
-  }, [user]);
-
-  const refreshData = () => {
-    if (user?.role === 'Student') {
-      fetchAlumni();
-      fetchMyRequests();
-    } else if (user?.role === 'Alumni') {
-      fetchRequests();
+  const refreshData = async () => {
+    setLoading(true);
+    try {
+      if (user?.role === 'Student') {
+        const [alumniRes, requestsRes] = await Promise.all([
+          api.get('/auth/users?role=Alumni'),
+          api.get('/mentorship/my-requests')
+        ]);
+        setDataList(alumniRes.data);
+        setMyRequests(requestsRes.data);
+      } else if (user?.role === 'Alumni') {
+        const res = await api.get('/mentorship/my-requests');
+        // Filter out rejected to keep list clean
+        setDataList(res.data.filter(req => req.status !== 'Rejected'));
+      }
+    } catch (err) {
+      console.error("Data Load Error", err);
+      toast.error("Failed to sync data");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchAlumni = async () => {
-    try {
-      const res = await api.get('/auth/users?role=Alumni');
-      setDataList(res.data);
-    } catch (err) { console.error(err); }
-  };
-
-  const fetchMyRequests = async () => {
-    try {
-      const res = await api.get('/mentorship/my-requests');
-      setMyRequests(res.data);
-    } catch (err) { console.error(err); }
-  };
-
-  const fetchRequests = async () => {
-    try {
-      const res = await api.get('/mentorship/my-requests');
-      // Show all requests except Rejected ones
-      const activeRequests = res.data.filter(req => req.status !== 'Rejected');
-      setDataList(activeRequests);
-    } catch (err) { console.error(err); }
-  };
-
   // --- ACTIONS ---
-
   const handleSendRequest = async (alumniId) => {
+    const toastId = toast.loading("Sending request...");
     try {
       await api.post('/mentorship/request', { alumniId, message: "I am interested in your guidance." });
-      toast.success('Request Sent!');
-      refreshData();
       socket.emit("send_notification", { receiverId: alumniId });
+      await refreshData();
+      toast.success('Request Sent Successfully!', { id: toastId });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send request');
+      toast.error(err.response?.data?.message || 'Failed to send request', { id: toastId });
     }
   };
 
   const handleStatusUpdate = async (id, status, studentId) => {
     try {
+      // Optimistic UI Update
+      setDataList(prev => prev.filter(req => req._id !== id)); 
+      
       await api.put(`/mentorship/update/${id}`, { status });
-      toast.success(`Request ${status}!`);
+      socket.emit("send_notification", { receiverId: studentId });
+      toast.success(`Request ${status}`);
       
-      if (status === 'Rejected') {
-        setDataList(prev => prev.filter(req => req._id !== id));
-      } else {
-        fetchRequests();
-      }
-      
-      // Notify Student
-      if (studentId) socket.emit("send_notification", { receiverId: studentId });
-
+      // Background refresh to ensure consistency
+      refreshData();
     } catch (err) {
-      toast.error('Failed to update status');
+      toast.error('Update failed');
+      refreshData(); // Revert on error
     }
   };
 
-  // --- NEW: REMOVE CONNECTION (Cancel/Delete) ---
   const handleRemoveConnection = async (requestId, otherUserId) => {
-    if (!window.confirm("Are you sure you want to remove this connection?")) return;
-
+    if (!window.confirm("Disconnect from this user?")) return;
     try {
       await api.delete(`/mentorship/remove/${requestId}`);
+      socket.emit("send_notification", { receiverId: otherUserId });
+      await refreshData();
       toast.success('Connection Removed');
-      refreshData();
-      
-      // Notify the other person (Alumni or Student)
-      if (otherUserId) socket.emit("send_notification", { receiverId: otherUserId });
-
     } catch (err) {
       toast.error('Failed to remove connection');
     }
   };
 
-  const getRequestInfo = (alumniId) => {
-    return myRequests.find(req => req.alumniId?._id === alumniId);
-  };
+  // --- HELPERS ---
+  const getRequestInfo = (alumniId) => myRequests.find(req => req.alumniId?._id === alumniId);
 
   const filteredData = dataList.filter(item => {
     const name = item.name || item.studentId?.name || '';
     const company = item.currentCompany || '';
-    return name.toLowerCase().includes(searchTerm.toLowerCase()) || company.toLowerCase().includes(searchTerm.toLowerCase());
+    const role = item.jobRole || '';
+    return (
+      name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      role.toLowerCase().includes(searchTerm.toLowerCase())
+    );
   });
 
-  return (
-    <div style={{ minHeight: '100vh', background: '#f8f9fa' }}>
-      
-      {/* RESPONSIVE FIX 3: Fixed Position Wrapper for Sidebar to allow overlap on mobile */}
-      <div style={{ 
-        position: 'fixed', 
-        top: 0, 
-        left: 0, 
-        height: '100%', 
-        zIndex: 100,
-        transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 0.3s ease'
-      }}>
-        <Sidebar isOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-      </div>
-      
-      {/* RESPONSIVE FIX 4: Dynamic Margin and Width */}
-      <div style={{ 
-        marginLeft: isSidebarOpen && window.innerWidth > 768 ? '290px' : '0', 
-        width: isSidebarOpen && window.innerWidth > 768 ? 'calc(100% - 290px)' : '100%',
-        transition: 'all 0.4s ease'
-      }}>
-        
-        {/* Navbar */}
-        <nav style={{ background: 'white', padding: '0 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '80px', boxShadow: '0 2px 15px rgba(0,0,0,0.03)', position: 'sticky', top: 0, zIndex: 50 }}>
-           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} style={{ background: '#f3f4f6', border: 'none', padding: '10px', borderRadius: '8px', cursor: 'pointer', color: '#0f284e' }}><Menu size={24} /></button>
-             <h2 style={{ margin: 0, color: '#0f284e', fontSize: '22px', fontWeight: 'bold' }}>Mentorship</h2>
-           </div>
-           
-           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-             <span style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', background: user.role === 'Student' ? '#e0f2fe' : '#fffbeb', color: user.role === 'Student' ? '#0369a1' : '#92400e', border: `1px solid ${user.role === 'Student' ? '#bae6fd' : '#fde047'}`, display: window.innerWidth < 640 ? 'none' : 'block' }}>
-                {user.role}
-             </span>
-             <img src={logo} alt="Profile" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #d4af37', padding: '2px' }} />
-           </div>
-        </nav>
+  // Animation Variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+  };
 
-        <div style={{ padding: '40px', maxWidth: '1600px', margin: '0 auto' }}>
+  return (
+    <div className="relative min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-cyan-500/30">
+      
+      {/* 1. BACKGROUND */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <BlueLightsBackground />
+        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[1px]" />
+      </div>
+
+      <div className="relative z-10 flex h-screen overflow-hidden">
+        
+        {/* 2. SIDEBAR */}
+        <AnimatePresence mode='wait'>
+          {isSidebarOpen && (
+            <motion.aside 
+              initial={{ x: -280, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -280, opacity: 0 }}
+              className="absolute lg:relative z-50 w-72 h-full flex-shrink-0 border-r border-white/10 bg-slate-900/50 backdrop-blur-xl"
+            >
+              <Sidebar isOpen={true} toggleSidebar={() => setIsSidebarOpen(false)} />
+            </motion.aside>
+          )}
+        </AnimatePresence>
+
+        {/* 3. MAIN CONTENT */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/20">
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
-            <div>
-              <h1 style={{ fontSize: '28px', color: '#0f284e', marginBottom: '5px', fontWeight: 'bold' }}>
-                 {user?.role === 'Student' ? 'Find Your Mentor' : 'Mentorship Requests'}
-              </h1>
-              <p style={{ color: '#666', fontSize: '16px', margin: 0 }}>
-                 {user?.role === 'Student' ? 'Connect with alumni for career guidance.' : 'Guide the next generation of students.'}
-              </p>
+          {/* NAVBAR */}
+          <nav className="h-20 px-6 flex justify-between items-center sticky top-0 z-40 bg-slate-900/60 backdrop-blur-md border-b border-white/5">
+            <div className="flex items-center gap-4">
+              <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-xl text-cyan-400 hover:bg-white/5 transition-colors">
+                <Menu size={24} />
+              </button>
+              <h2 className="text-xl font-bold tracking-wide text-white flex items-center gap-2">
+                <Briefcase size={20} className="text-cyan-400"/> Mentorship
+              </h2>
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', background: 'white', padding: '12px 20px', borderRadius: '30px', width: window.innerWidth < 640 ? '100%' : '350px', border: '1px solid #e5e7eb', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
-               <Search size={18} color="#999" />
-               <input type="text" placeholder="Search..." onChange={(e) => setSearchTerm(e.target.value)} style={{ border: 'none', background: 'transparent', marginLeft: '10px', outline: 'none', width: '100%', color: '#333', fontSize: '15px' }} />
-            </div>
-          </div>
+            <div className="flex items-center gap-4">
+              {/* Search Bar */}
+              <div className="hidden md:flex items-center bg-white/5 border border-white/10 rounded-full px-4 py-2 w-64 focus-within:border-cyan-500/50 transition-colors">
+                <Search size={16} className="text-slate-500 mr-2" />
+                <input 
+                  type="text" 
+                  placeholder="Search mentors..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-transparent border-none outline-none text-sm text-slate-300 placeholder-slate-600 w-full"
+                />
+              </div>
 
-          {/* --- ALUMNI VIEW --- */}
-          {user?.role === 'Alumni' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '30px' }}>
-              {filteredData.length === 0 ? <p style={{color: '#999', fontSize: '18px'}}>No pending requests.</p> : filteredData.map((req) => (
-                <div key={req._id} style={{ background: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', borderLeft: `6px solid ${req.status === 'Accepted' ? '#10b981' : '#fbbf24'}`, position: 'relative' }}>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-                    <div 
-                        onClick={() => navigate(`/profile/${req.studentId?._id}`)}
-                        style={{ display: 'flex', gap: '15px', cursor: 'pointer' }}
-                        title="View Profile"
-                    >
-                      <div style={{ width: '50px', height: '50px', borderRadius: '50%', overflow: 'hidden', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e5e7eb' }}>
-                         {req.studentId?.profileImage ? (
-                            <img src={req.studentId.profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                         ) : (
-                            <span style={{ color: '#555', fontSize: '20px', fontWeight: 'bold' }}>
-                               {req.studentId?.name?.charAt(0)}
-                            </span>
-                         )}
-                      </div>
-                      <div>
-                        <h3 style={{ margin: '0 0 5px', color: '#0f284e', fontSize: '18px', fontWeight: 'bold' }}>{req.studentId?.name}</h3>
-                        <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>{req.studentId?.department} Student</p>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '11px', padding: '6px 12px', borderRadius: '20px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', background: req.status === 'Pending' ? '#fffbeb' : '#f0fdf4', color: req.status === 'Pending' ? '#b45309' : '#15803d', border: `1px solid ${req.status === 'Pending' ? '#fde68a' : '#bbf7d0'}` }}>{req.status}</span>
+              {/* User Badge */}
+              <div className="hidden sm:flex items-center gap-3 pl-4 border-l border-white/10">
+                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${user.role === 'Student' ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
+                    {user.role}
+                 </span>
+              </div>
+            </div>
+          </nav>
+
+          {/* PAGE CONTENT */}
+          <main className="p-6 lg:p-10 max-w-7xl mx-auto w-full">
+            
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+              <h1 className="text-3xl font-bold text-white mb-2">
+                {user?.role === 'Student' ? 'Find Your Mentor' : 'Mentorship Requests'}
+              </h1>
+              <p className="text-slate-400">
+                {user?.role === 'Student' 
+                  ? 'Connect with alumni to accelerate your career and gain industry insights.' 
+                  : 'Empower the next generation. Manage your incoming mentorship requests here.'}
+              </p>
+            </motion.div>
+
+            {/* LOADING STATE */}
+            {loading ? (
+              <div className="flex justify-center py-20"><Loader /></div>
+            ) : (
+              <motion.div 
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+              >
+                {filteredData.length === 0 ? (
+                  <div className="col-span-full py-20 text-center text-slate-500 border border-white/5 rounded-2xl border-dashed">
+                    <User size={48} className="mx-auto mb-4 opacity-20" />
+                    <p>No records found matching your criteria.</p>
                   </div>
-                  
-                  <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '12px', fontSize: '15px', color: '#555', marginBottom: '25px', lineHeight: '1.6', fontStyle: 'italic', border: '1px solid #f3f4f6' }}>"{req.message}"</div>
-                  
-                  {req.status === 'Pending' ? (
-                    <div style={{ display: 'flex', gap: '15px' }}>
-                      <button onClick={() => handleStatusUpdate(req._id, 'Accepted', req.studentId?._id)} style={{ flex: 1, padding: '12px', background: '#10b981', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}><CheckCircle size={18} /> Accept</button>
-                      <button onClick={() => handleStatusUpdate(req._id, 'Rejected', req.studentId?._id)} style={{ flex: 1, padding: '12px', background: '#fee2e2', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}><XCircle size={18} /> Reject</button>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <button onClick={() => navigate(`/chat/${req.studentId._id}`)} style={{ flex: 1, padding: '12px', background: '#0f284e', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', boxShadow: '0 4px 10px rgba(15, 40, 78, 0.2)' }}>
-                            <MessageSquare size={18} /> Chat
-                        </button>
-                        <button onClick={() => handleRemoveConnection(req._id, req.studentId?._id)} style={{ padding: '12px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Remove Connection">
-                            <Trash2 size={20} />
-                        </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                ) : (
+                  filteredData.map((item) => {
+                    // Logic differentiation based on role
+                    const isStudentView = user.role === 'Student';
+                    const targetUser = isStudentView ? item : item.studentId;
+                    const request = isStudentView ? getRequestInfo(item._id) : item;
+                    const status = request ? request.status : null;
 
-          {/* --- STUDENT VIEW --- */}
-          {user?.role === 'Student' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '30px' }}>
-              {filteredData.length === 0 ? <p style={{color: '#999', fontSize: '18px'}}>No alumni found matching your search.</p> : filteredData.map((alum) => {
-                const request = getRequestInfo(alum._id);
-                const status = request ? request.status : null; 
-
-                return (
-                  <div key={alum._id} style={{ background: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', borderTop: '5px solid #0f284e', textAlign: 'center', transition: 'transform 0.3s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                  >
-                    
-                    <div onClick={() => navigate(`/profile/${alum._id}`)} style={{ cursor: 'pointer' }} title="View Profile">
-                        <div style={{ width: '80px', height: '80px', borderRadius: '50%', margin: '0 auto 20px', overflow: 'hidden', background: '#f0f4ff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #e0f2fe' }}>
-                          {alum.profileImage ? (
-                            <img src={alum.profileImage} alt={alum.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <User size={40} color="#0f284e" />
-                          )}
-                        </div>
-                        
-                        <h3 style={{ margin: '0 0 5px', color: '#0f284e', fontSize: '20px', fontWeight: 'bold', textDecoration: 'underline', textDecorationColor: 'transparent', transition: '0.3s' }}
-                            onMouseEnter={(e) => e.currentTarget.style.textDecorationColor = '#0f284e'}
-                            onMouseLeave={(e) => e.currentTarget.style.textDecorationColor = 'transparent'}
-                        >
-                            {alum.name}
-                        </h3>
-                    </div>
-
-                    <p style={{ margin: 0, color: '#555', fontWeight: '600', fontSize: '15px' }}>{alum.currentCompany || 'N/A'}</p>
-                    <p style={{ margin: '2px 0 15px', color: '#888', fontSize: '13px' }}>{alum.jobRole || 'Professional'}</p>
-                    
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '25px', flexWrap: 'wrap' }}>
-                       {alum.skills?.slice(0,3).map((skill, i) => (
-                         <span key={i} style={{ background: '#f3f4f6', color: '#4b5563', fontSize: '12px', padding: '5px 12px', borderRadius: '15px', fontWeight: '500' }}>{skill}</span>
-                       ))}
-                    </div>
-
-                    {status === 'Accepted' ? (
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <button 
-                              onClick={() => navigate(`/chat/${alum._id}`)}
-                              style={{ flex: 1, padding: '14px', background: '#10b981', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)' }}
-                            >
-                              <MessageSquare size={18} /> Chat Now
-                            </button>
-                            <button 
-                              onClick={() => handleRemoveConnection(request._id, alum._id)}
-                              style={{ padding: '14px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '10px', cursor: 'pointer' }}
-                              title="Remove Connection"
-                            >
-                              <Trash2 size={20} />
-                            </button>
-                        </div>
-                    ) : status === 'Pending' ? (
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <button 
-                              disabled
-                              style={{ flex: 1, padding: '14px', background: '#fbbf24', color: 'white', border: 'none', borderRadius: '10px', cursor: 'not-allowed', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-                            >
-                              <Clock size={18} /> Request Pending
-                            </button>
-                            <button 
-                              onClick={() => handleRemoveConnection(request._id, alum._id)}
-                              style={{ padding: '14px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '10px', cursor: 'pointer' }}
-                              title="Cancel Request"
-                            >
-                              <Trash2 size={20} />
-                            </button>
-                        </div>
-                    ) : (
-                        <button 
-                          onClick={() => handleSendRequest(alum._id)}
-                          style={{ width: '100%', padding: '14px', background: '#0f284e', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'background 0.3s' }}
-                        >
-                          <Send size={18} /> Request Mentorship
-                        </button>
-                    )}
-                    
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
+                    return (
+                      <GlassCard 
+                        key={item._id}
+                        item={item}
+                        targetUser={targetUser}
+                        isStudentView={isStudentView}
+                        status={status}
+                        request={request}
+                        navigate={navigate}
+                        actions={{ handleSendRequest, handleStatusUpdate, handleRemoveConnection }}
+                      />
+                    );
+                  })
+                )}
+              </motion.div>
+            )}
+          </main>
         </div>
       </div>
     </div>
+  );
+};
+
+// --- SUB-COMPONENT: GLASS CARD ---
+const GlassCard = ({ item, targetUser, isStudentView, status, request, navigate, actions }) => {
+  const { handleSendRequest, handleStatusUpdate, handleRemoveConnection } = actions;
+
+  // Determine Badge Colors
+  const getStatusBadge = (s) => {
+    switch (s) {
+      case 'Accepted': return <span className="flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/20"><CheckCircle size={12} /> Connected</span>;
+      case 'Pending': return <span className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full text-xs font-bold border border-amber-500/20"><Clock size={12} /> Pending</span>;
+      default: return null;
+    }
+  };
+
+  return (
+    <motion.div
+      layout
+      whileHover={{ y: -5, boxShadow: "0 10px 30px -10px rgba(6, 182, 212, 0.15)" }}
+      className="group relative bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-6 overflow-hidden flex flex-col h-full"
+    >
+      {/* Decorative Gradient Top */}
+      <div className={`absolute top-0 left-0 right-0 h-1 ${status === 'Accepted' ? 'bg-emerald-500' : 'bg-gradient-to-r from-cyan-500 to-blue-500'}`} />
+
+      {/* Header Profile */}
+      <div className="flex items-start justify-between mb-4">
+        <div 
+          onClick={() => navigate(`/profile/${targetUser?._id}`)} 
+          className="flex items-center gap-4 cursor-pointer"
+        >
+          <div className="relative">
+            <div className="w-14 h-14 rounded-full p-[2px] bg-gradient-to-tr from-cyan-400 to-transparent">
+              <img 
+                src={targetUser?.profileImage || `https://ui-avatars.com/api/?name=${targetUser?.name}&background=0f172a&color=22d3ee`} 
+                alt="Avatar" 
+                className="w-full h-full rounded-full object-cover border-2 border-slate-900 bg-slate-900"
+              />
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors">
+              {targetUser?.name}
+            </h3>
+            <p className="text-xs text-slate-400 flex items-center gap-1">
+              {targetUser?.role === 'Alumni' && <Briefcase size={10} />}
+              {targetUser?.currentCompany || targetUser?.department || 'User'}
+            </p>
+          </div>
+        </div>
+        <div>
+          {getStatusBadge(status)}
+        </div>
+      </div>
+
+      {/* Info / Message */}
+      <div className="flex-1">
+        {/* If Alumni View: Show Message */}
+        {!isStudentView && (
+           <div className="bg-black/20 p-3 rounded-lg mb-4 text-sm text-slate-300 italic border border-white/5">
+             "{item.message}"
+           </div>
+        )}
+
+        {/* If Student View: Show Skills */}
+        {isStudentView && targetUser?.skills && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {targetUser.skills.slice(0, 3).map((s, i) => (
+              <span key={i} className="text-[10px] px-2 py-1 rounded bg-white/5 text-slate-400 border border-white/5">
+                {s}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="mt-4 pt-4 border-t border-white/10">
+        
+        {/* SCENARIO 1: ALUMNI VIEW - PENDING */}
+        {!isStudentView && status === 'Pending' && (
+          <div className="grid grid-cols-2 gap-3">
+            <ActionBtn 
+              onClick={() => handleStatusUpdate(item._id, 'Accepted', targetUser?._id)} 
+              icon={<CheckCircle size={16} />} 
+              label="Accept" 
+              variant="success" 
+            />
+            <ActionBtn 
+              onClick={() => handleStatusUpdate(item._id, 'Rejected', targetUser?._id)} 
+              icon={<XCircle size={16} />} 
+              label="Reject" 
+              variant="danger" 
+            />
+          </div>
+        )}
+
+        {/* SCENARIO 2: ALUMNI VIEW - ACCEPTED */}
+        {!isStudentView && status === 'Accepted' && (
+           <div className="grid grid-cols-2 gap-3">
+             <ActionBtn 
+               onClick={() => navigate(`/chat/${targetUser?._id}`)}
+               icon={<MessageSquare size={16} />}
+               label="Chat"
+               variant="primary"
+             />
+             <ActionBtn 
+               onClick={() => handleRemoveConnection(item._id, targetUser?._id)}
+               icon={<Trash2 size={16} />}
+               label="Remove"
+               variant="outline-danger"
+             />
+           </div>
+        )}
+
+        {/* SCENARIO 3: STUDENT VIEW - NO REQUEST */}
+        {isStudentView && !status && (
+          <ActionBtn 
+            onClick={() => handleSendRequest(targetUser?._id)}
+            icon={<Send size={16} />}
+            label="Request Mentorship"
+            variant="glow"
+            fullWidth
+          />
+        )}
+
+        {/* SCENARIO 4: STUDENT VIEW - PENDING */}
+        {isStudentView && status === 'Pending' && (
+          <div className="grid grid-cols-2 gap-3">
+            <button disabled className="flex items-center justify-center gap-2 py-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-sm font-semibold opacity-75 cursor-not-allowed">
+               <Clock size={16} /> Waiting
+            </button>
+            <ActionBtn 
+               onClick={() => handleRemoveConnection(request._id, targetUser?._id)}
+               icon={<XCircle size={16} />}
+               label="Cancel"
+               variant="outline-danger"
+             />
+          </div>
+        )}
+
+        {/* SCENARIO 5: STUDENT VIEW - ACCEPTED */}
+        {isStudentView && status === 'Accepted' && (
+           <div className="grid grid-cols-2 gap-3">
+             <ActionBtn 
+               onClick={() => navigate(`/chat/${targetUser?._id}`)}
+               icon={<MessageSquare size={16} />}
+               label="Chat Now"
+               variant="success-glow"
+             />
+             <ActionBtn 
+               onClick={() => handleRemoveConnection(request._id, targetUser?._id)}
+               icon={<Trash2 size={16} />}
+               label="Disconnect"
+               variant="outline-danger"
+             />
+           </div>
+        )}
+
+      </div>
+    </motion.div>
+  );
+};
+
+// --- BUTTON UTILITY ---
+const ActionBtn = ({ onClick, icon, label, variant, fullWidth }) => {
+  const base = "flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 active:scale-95";
+  const variants = {
+    primary: "bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-900/20",
+    glow: "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/20",
+    "success-glow": "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/20",
+    success: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white",
+    danger: "bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white",
+    "outline-danger": "bg-transparent text-rose-400 border border-rose-500/20 hover:bg-rose-500/10",
+  };
+
+  return (
+    <button onClick={onClick} className={`${base} ${variants[variant] || variants.primary} ${fullWidth ? 'w-full' : ''}`}>
+      {icon} {label}
+    </button>
   );
 };
 
