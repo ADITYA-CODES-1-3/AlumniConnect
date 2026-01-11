@@ -13,7 +13,8 @@ const {
     getAllUsers, 
     getAdminStats, 
     getProfile, 
-    updateProfile 
+    updateProfile ,
+    getAllStudents
 } = require('../controllers/authController');
 
 // --- PUBLIC ROUTES (No Login Required) ---
@@ -33,7 +34,7 @@ router.get('/users', getAllUsers);
 router.get('/pending-users', getPendingUsers);
 router.put('/approve/:id', approveUser);
 router.delete('/reject/:id', rejectUser); // <--- The Reject Route
-
+router.get('/students', auth, getAllStudents);
 router.get('/stats', getAdminStats);
 
 module.exports = router;

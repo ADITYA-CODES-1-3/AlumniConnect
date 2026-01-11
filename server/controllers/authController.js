@@ -286,3 +286,46 @@ exports.rejectUser = async (req, res) => {
         res.status(500).json({ message: "Server Error" });
     }
 };
+// --- GET ALL STUDENTS WITH FILTERS ---
+exports.getAllStudents = async (req, res) => {
+    try {
+        const { search, department, batch, sort } = req.query;
+
+        // 1. Base Query: Only get 'Student' role
+        let query = { role: 'Student' };
+
+        // 2. Search Logic (Name, Email, or Roll Number)
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: 'i' } },       // Case-insensitive name
+                { email: { $regex: search, $options: 'i' } },      // Case-insensitive email
+                { rollNumber: { $regex: search, $options: 'i' } }  // Roll number match
+            ];
+        }
+
+        // 3. Filter by Department
+        if (department && department !== 'All') {
+            query.department = department;
+        }
+
+        // 4. Filter by Batch (Year)
+        if (batch && batch !== 'All') {
+            query.batch = batch;
+        }
+
+        // 5. Execute Query
+        // Sort logic: 'newest' (default) or 'oldest' or 'name'
+        let sortOption = { createdAt: -1 }; // Default: Newest first
+        if (sort === 'oldest') sortOption = { createdAt: 1 };
+        if (sort === 'name') sortOption = { name: 1 };
+
+        const students = await User.find(query)
+            .select('-password') // Hide password
+            .sort(sortOption);
+
+        res.json(students);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
+    }
+};

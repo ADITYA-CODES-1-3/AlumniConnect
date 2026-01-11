@@ -7,16 +7,19 @@ import {
   CheckCircle, TrendingUp, Loader, AlertCircle, Shield, ChevronRight
 } from 'lucide-react';
 
-// Components & Assets
+// --- COMPONENTS & ASSETS ---
 import api from '../utils/api';
 import AdminSidebar from '../components/AdminSidebar';
-import BlueLightsBackground from '../components/BlueLightsBackground'; // Matching Login Theme
+import AdminStudents from '../components/AdminStudents';
+import BlueLightsBackground from '../components/BlueLightsBackground'; 
 import logo from '../assets/logo.png'; 
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default open on large screens
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
   const [stats, setStats] = useState({ students: 0, alumni: 0, pending: 0 });
+  
+  // Data State for "Alumni" and "Pending" tabs (Students are handled separately now)
   const [dataList, setDataList] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,7 +32,6 @@ const AdminDashboard = () => {
       if (window.innerWidth < 1024) setIsSidebarOpen(false);
       else setIsSidebarOpen(true);
     };
-    // Set initial state
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -38,11 +40,11 @@ const AdminDashboard = () => {
   // Fetch Stats on Mount
   useEffect(() => { fetchStats(); }, []);
 
-  // Fetch Data when Tab Changes
+  // Fetch Data when Tab Changes (Skipping 'students' because AdminStudents fetches its own data)
   useEffect(() => {
     setSearchTerm('');
-    if (activeTab !== 'dashboard') {
-      const type = activeTab === 'students' ? 'Student' : activeTab === 'alumni' ? 'Alumni' : 'Pending';
+    if (activeTab !== 'dashboard' && activeTab !== 'students') {
+      const type = activeTab === 'alumni' ? 'Alumni' : 'Pending';
       fetchData(type);
     }
   }, [activeTab]);
@@ -99,6 +101,7 @@ const AdminDashboard = () => {
     }
   };
 
+  // Filter logic for Alumni/Pending cards
   const filteredList = dataList.filter(user => 
     user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -108,7 +111,7 @@ const AdminDashboard = () => {
   return (
     <div className="relative min-h-screen bg-slate-950 text-slate-200 overflow-hidden font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
       
-      {/* 1. BACKGROUND LAYER - Matches Login/Register */}
+      {/* 1. BACKGROUND LAYER */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <BlueLightsBackground />
         <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[1px]" />
@@ -174,9 +177,24 @@ const AdminDashboard = () => {
           <main className="flex-1 overflow-y-auto p-6 lg:p-10 scrollbar-thin scrollbar-thumb-cyan-500/20 scrollbar-track-transparent">
             <div className="max-w-7xl mx-auto space-y-8">
               
-              {activeTab === 'dashboard' ? (
-                <DashboardStats stats={stats} />
-              ) : (
+              {/* --- VIEW SWITCHING LOGIC --- */}
+              
+              {/* 1. DASHBOARD VIEW */}
+              {activeTab === 'dashboard' && <DashboardStats stats={stats} />}
+
+              {/* 2. STUDENTS VIEW (The New Tabular Table) */}
+              {activeTab === 'students' && (
+                <div className="space-y-6">
+                  <div className="flex items-end justify-between border-b border-white/5 pb-4">
+                     <h2 className="text-3xl font-bold text-white">Student Directory</h2>
+                     <p className="text-slate-400 text-sm">Advanced Data Grid</p>
+                  </div>
+                  <AdminStudents />
+                </div>
+              )}
+
+              {/* 3. ALUMNI & PENDING VIEWS (Card Layouts) */}
+              {(activeTab === 'alumni' || activeTab === 'pending') && (
                 <DirectoryView 
                   title={activeTab} 
                   data={filteredList} 
@@ -197,7 +215,7 @@ const AdminDashboard = () => {
   );
 };
 
-// --- SUB COMPONENTS FOR CLEANLINESS ---
+// --- SUB COMPONENTS ---
 
 const DashboardStats = ({ stats }) => (
   <motion.div 
@@ -217,7 +235,6 @@ const DashboardStats = ({ stats }) => (
           Manage users, verify requests, and monitor platform growth efficiently.
         </p>
       </div>
-      {/* Decorative Glows */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] pointer-events-none" />
     </div>
@@ -264,6 +281,7 @@ const StatCard = ({ title, count, icon, accentColor }) => (
   </motion.div>
 );
 
+// Generic Directory View (For Alumni & Pending)
 const DirectoryView = ({ title, data, loading, searchTerm, setSearchTerm, navigate, handleApprove, handleReject }) => (
   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
     
