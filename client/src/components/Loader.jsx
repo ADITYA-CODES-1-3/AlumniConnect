@@ -1,83 +1,64 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import logo from '../assets/logo.png';
+import logo from '../assets/logo.png'; 
 
 const Loader = () => {
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#0f172a]/90 backdrop-blur-lg">
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gradient-to-b from-slate-900 via-slate-900 to-black backdrop-blur-xl">
       
       <div className="relative flex items-center justify-center">
         
-        {/* 1. Background Ambient Glow */}
-        <motion.div
-          animate={{ 
-            scale: [1, 1.5, 1],
-            opacity: [0.3, 0.1, 0.3] 
-          }}
-          transition={{ 
-            duration: 2.5, 
-            repeat: Infinity, 
-            ease: "easeInOut" 
-          }}
-          className="absolute w-40 h-40 bg-cyan-500/30 rounded-full blur-3xl pointer-events-none"
-        />
+        {/* Glow Effect */}
+        <div className="absolute w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* 2. Outer Cyber Ring (Cyan) */}
+        {/* Outer Ring */}
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-          className="absolute w-32 h-32 rounded-full border border-white/5 border-t-cyan-400 border-r-cyan-400/30 border-b-transparent border-l-transparent shadow-[0_0_15px_rgba(34,211,238,0.2)]"
+          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+          className="absolute w-24 h-24 rounded-full border-[1px] border-cyan-500/20 border-t-cyan-400 border-r-cyan-400/50 shadow-[0_0_10px_rgba(34,211,238,0.1)]"
         />
 
-        {/* 3. Middle Dashed Ring (Gold - Reverse Spin) */}
+        {/* Inner Ring */}
         <motion.div
           animate={{ rotate: -360 }}
           transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-          className="absolute w-24 h-24 rounded-full border-2 border-dashed border-amber-500/40 border-t-amber-400"
+          className="absolute w-16 h-16 rounded-full border-[1px] border-blue-500/20 border-b-blue-400"
         />
 
-        {/* 4. Inner Fast Ring (White) */}
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-          className="absolute w-20 h-20 rounded-full border border-transparent border-l-white/50 border-r-white/10"
-        />
-
-        {/* 5. Central Logo Capsule */}
+        {/* Central Logo Capsule - Fixed Square Issue */}
         <motion.div 
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5 }}
-          className="relative z-10 w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center shadow-2xl border border-white/10"
+          // Added overflow-hidden to clip any square corners
+          className="relative z-10 w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center border border-white/10 overflow-hidden shadow-lg"
         >
-          {/* Logo Pulse Animation */}
           <motion.img 
             src={logo} 
             alt="Loading..." 
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-            className="w-10 h-10 object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
+            animate={{ scale: [1, 1.1, 1], opacity: [0.9, 1, 0.9] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            // Added rounded-full here too and object-cover to fill the circle if needed
+            className="w-8 h-8 object-contain rounded-full" 
           />
         </motion.div>
       </div>
 
-      {/* 6. Loading Text with Blinking Cursor */}
-      <div className="mt-12 flex flex-col items-center gap-2">
+      {/* Loading Text */}
+      <div className="mt-8 flex flex-col items-center gap-3">
         <motion.span 
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="text-cyan-400 font-mono text-xs tracking-[0.4em] font-bold uppercase"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="text-cyan-500/80 font-mono text-[10px] tracking-[0.3em] font-bold uppercase"
         >
-          System Initializing
+          AlumniConnect
         </motion.span>
         
-        {/* Progress Bar Line */}
-        <div className="w-24 h-1 bg-white/10 rounded-full overflow-hidden mt-2">
+        {/* Loader Line */}
+        <div className="w-24 h-[2px] bg-slate-800 rounded-full overflow-hidden relative">
            <motion.div 
-             initial={{ x: "-100%" }}
-             animate={{ x: "100%" }}
+             className="absolute top-0 left-0 h-full w-12 bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
+             animate={{ x: ["-100%", "200%"] }}
              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-             className="w-full h-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
            />
         </div>
       </div>
