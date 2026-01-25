@@ -1,10 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { postJob, getAllJobs } = require('../controllers/jobController');
-const auth = require('../middleware/authMiddleware'); // Import Security Guard
+const { postJob, getAllJobs, getJobById } = require('../controllers/jobController');
+const auth = require('../middleware/authMiddleware'); 
 
-// Protected Routes (Token Required)
-router.post('/create', auth, postJob); // Only logged in users can post
-router.get('/all', auth, getAllJobs);  // Only logged in users can view
+// Protected Routes
+router.post('/create', auth, postJob); 
+router.get('/all', auth, getAllJobs);  
+
+// Public Routes
+router.get('/', getAllJobs);
+router.get('/:id', getJobById);
 
 module.exports = router;

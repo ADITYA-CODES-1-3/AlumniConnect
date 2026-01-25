@@ -57,11 +57,10 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // --- ROUTE CONNECTIONS ---
 app.use('/api/auth', authRoutes);       
-app.use('/api/jobs', jobRoutes);        
-app.use('/api/mentorship', mentorshipRoutes);
+app.use('/api/jobs', jobRoutes);        // Matches frontend api.get('/jobs')
+app.use('/api/mentorship', mentorshipRoutes); // Matches frontend api.get('/mentorship/mentors')
 app.use('/api/chat', chatRoutes);
-app.use('/api/events', eventRoutes);
-
+app.use('/api/events', eventRoutes);    // Matches frontend api.get('/events')
 // --- 4. REAL-TIME CHAT & NOTIFICATION LOGIC ---
 io.on('connection', (socket) => {
   console.log(`User Connected: ${socket.id}`);

@@ -2,14 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Menu, TrendingUp, Briefcase, Users, Calendar, 
-  Activity, Bell, ChevronRight, Search 
+  Menu, Briefcase, Users, Calendar, 
+  Activity, Bell, ChevronRight, Search, 
+  Clock, Zap, Shield 
 } from 'lucide-react';
 
 // Components & Utils
 import api from '../utils/api';
 import Sidebar from '../components/Sidebar'; 
-import BlueLightsBackground from '../components/BlueLightsBackground'; // Theme Standard
+import BlueLightsBackground from '../components/BlueLightsBackground'; 
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -17,234 +18,258 @@ const Dashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
   const [loading, setLoading] = useState(true);
 
-  // Initialize stats with specific keys to match API structure
-  const [stats, setStats] = useState({ 
-    card1: { label: "Active Jobs", value: 0 }, 
-    card2: { label: "Mentorships", value: 0 }, 
-    card3: { label: "Events", value: 0 } 
-  });
+  // Initial Stats
+  const [stats, setStats] = useState([
+    { title: 'Active Jobs', value: 0, icon: Briefcase, color: 'text-blue-400', gradient: 'from-blue-500/20 to-cyan-500/20', border: 'border-blue-500/20', link: '/jobs' },
+    { title: 'Mentors', value: 0, icon: Users, color: 'text-purple-400', gradient: 'from-purple-500/20 to-pink-500/20', border: 'border-purple-500/20', link: '/mentorship' },
+    { title: 'Events', value: 0, icon: Calendar, color: 'text-emerald-400', gradient: 'from-emerald-500/20 to-teal-500/20', border: 'border-emerald-500/20', link: '/events' },
+  ]);
+
+  const [recentActivity, setRecentActivity] = useState([]);
 
   // --- RESPONSIVE HANDLER ---
   useEffect(() => {
-    const handleResize = () => setIsSidebarOpen(window.innerWidth > 1024);
+    const handleResize = () => {
+      if (window.innerWidth > 1024) {
+        setIsSidebarOpen(true);
+      } else {
+        setIsSidebarOpen(false);
+      }
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // --- SMART DATA PARSER (The Fix) ---
+  // Macha, backend response structure epdi irundhalum idhu handle pannidum.
+  const extractArray = (res) => {
+    if (!res) return [];
+    if (Array.isArray(res.data)) return res.data; // Standard
+    if (res.data && Array.isArray(res.data.data)) return res.data.data; // Nested data
+    if (res.data && Array.isArray(res.data.jobs)) return res.data.jobs; // Specific keys
+    if (res.data && Array.isArray(res.data.events)) return res.data.events;
+    if (res.data && Array.isArray(res.data.mentors)) return res.data.mentors;
+    return [];
+  };
+
   // --- DATA FETCHING ---
   useEffect(() => {
-    const initDashboard = async () => {
+    const fetchDashboardData = async () => {
       const storedUser = localStorage.getItem('user');
-      
       if (!storedUser) {
         navigate('/login');
         return;
       }
+      setUser(JSON.parse(storedUser));
 
       try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-
-        // Parallel Fetch: Profile Refresh + Stats
-        const [profileRes, statsRes] = await Promise.allSettled([
-          api.get('/auth/me'),
-          api.get('/auth/dashboard-stats')
+        const [jobsRes, eventsRes, mentorsRes] = await Promise.all([
+          api.get('/jobs').catch(() => ({ data: [] })),
+          api.get('/events').catch(() => ({ data: [] })),
+          api.get('/mentorship/mentors').catch(() => ({ data: [] })) // Adjust route if needed
         ]);
 
-        // Handle Profile Update
-        if (profileRes.status === 'fulfilled') {
-          setUser(profileRes.value.data);
-          localStorage.setItem('user', JSON.stringify(profileRes.value.data));
-        }
+        const jobs = extractArray(jobsRes);
+        const events = extractArray(eventsRes);
+        const mentors = extractArray(mentorsRes);
 
-        // Handle Stats Update
-        if (statsRes.status === 'fulfilled' && statsRes.value.data?.card1) {
-          setStats(statsRes.value.data);
-        }
+        setStats([
+          { title: 'Active Jobs', value: jobs.length, icon: Briefcase, color: 'text-cyan-400', gradient: 'from-cyan-500/10 to-blue-600/10', border: 'border-cyan-500/20', link: '/jobs' },
+          { title: 'Mentors', value: mentors.length, icon: Users, color: 'text-violet-400', gradient: 'from-violet-500/10 to-purple-600/10', border: 'border-violet-500/20', link: '/mentorship' },
+          { title: 'Events', value: events.length, icon: Calendar, color: 'text-emerald-400', gradient: 'from-emerald-500/10 to-green-600/10', border: 'border-emerald-500/20', link: '/events' },
+        ]);
 
-      } catch (e) {
-        console.error("Dashboard Init Error", e);
+        // Create Activity Stream
+        const recentJobs = jobs.slice(0, 3).map(j => ({ 
+          type: 'New Job', 
+          title: j.title || j.role || 'Software Engineer', 
+          time: 'Recently Added', 
+          icon: Briefcase, 
+          color: 'text-cyan-400',
+          bg: 'bg-cyan-500/10' 
+        }));
+
+        const recentEvents = events.slice(0, 2).map(e => ({ 
+          type: 'Event', 
+          title: e.title || 'Tech Meetup', 
+          time: new Date(e.date || Date.now()).toLocaleDateString(), 
+          icon: Calendar, 
+          color: 'text-emerald-400',
+          bg: 'bg-emerald-500/10'
+        }));
+
+        setRecentActivity([...recentJobs, ...recentEvents]);
+
+      } catch (error) {
+        console.error("Dashboard Error:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    initDashboard();
+    fetchDashboardData();
   }, [navigate]);
 
-  const getProfileImage = () => {
-    if (user?.profileImage?.startsWith('data:image')) return user.profileImage;
-    return `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=0f172a&color=38bdf8`;
-  };
-
-  // Animation Variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1 }
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    return hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
   };
 
   return (
-    <div className="relative min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-cyan-500/30">
+    <div className="relative min-h-screen bg-slate-950 text-slate-200 font-sans overflow-hidden selection:bg-cyan-500/30">
       
-      {/* 1. BACKGROUND LAYER */}
+      {/* BACKGROUND */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <BlueLightsBackground />
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[1px]" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 mix-blend-soft-light"></div>
       </div>
 
-      <div className="relative z-10 flex h-screen overflow-hidden">
+      <div className="relative z-10 flex h-screen">
         
-        {/* 2. SIDEBAR */}
-        <AnimatePresence mode='wait'>
+        {/* SIDEBAR - Mobile & Desktop handled */}
+        <AnimatePresence>
           {isSidebarOpen && (
-            <motion.aside 
-              initial={{ x: -280, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -280, opacity: 0 }}
-              transition={{ duration: 0.3, ease: "circOut" }}
-              className="absolute lg:relative z-50 w-72 h-full flex-shrink-0 border-r border-white/10 bg-slate-900/50 backdrop-blur-xl"
-            >
-              <Sidebar isOpen={true} toggleSidebar={() => setIsSidebarOpen(false)} />
-            </motion.aside>
+            <>
+              {/* Mobile Backdrop */}
+              <motion.div 
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={() => setIsSidebarOpen(false)}
+                className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 lg:hidden"
+              />
+              
+              <motion.aside 
+                initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="fixed lg:relative z-50 w-72 h-full border-r border-white/5 bg-slate-900/90 backdrop-blur-xl"
+              >
+                <Sidebar isOpen={true} toggleSidebar={() => setIsSidebarOpen(false)} />
+              </motion.aside>
+            </>
           )}
         </AnimatePresence>
 
-        {/* 3. MAIN CONTENT */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/20">
+        {/* MAIN CONTENT */}
+        <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
           
-          {/* GLASS NAVBAR */}
-          <nav className="h-20 px-6 flex justify-between items-center sticky top-0 z-40 bg-slate-900/60 backdrop-blur-md border-b border-white/5">
+          {/* NAVBAR */}
+          <header className="h-20 px-6 flex justify-between items-center sticky top-0 z-30 bg-slate-950/50 backdrop-blur-md border-b border-white/5">
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-                className="p-2 rounded-xl text-cyan-400 hover:bg-white/5 transition-colors"
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all"
               >
                 <Menu size={24} />
               </button>
-              
-              {/* Search Bar (Visual Only) */}
-              <div className="hidden md:flex items-center bg-white/5 border border-white/10 rounded-full px-4 py-2 w-64 focus-within:border-cyan-500/50 transition-colors">
-                <Search size={16} className="text-slate-500 mr-2" />
-                <input 
-                  type="text" 
-                  placeholder="Search network..." 
-                  className="bg-transparent border-none outline-none text-sm text-slate-300 placeholder-slate-600 w-full"
-                />
+              <div className="hidden md:flex items-center gap-2 text-slate-500 text-sm font-medium">
+                <Shield size={14} className="text-cyan-500" />
+                <span>AlumniConnect Secure Dashboard</span>
               </div>
             </div>
 
             <div className="flex items-center gap-6">
-              <button className="relative text-slate-400 hover:text-white transition-colors">
+              <button className="relative p-2 text-slate-400 hover:text-white transition-colors">
                 <Bell size={20} />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
+                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
               </button>
               
-              <div className="flex items-center gap-3 pl-6 border-l border-white/10">
+              <div className="flex items-center gap-3">
                 <div className="text-right hidden sm:block">
-                  <p className="text-sm font-bold text-white leading-none">{user?.name}</p>
-                  <p className="text-xs text-cyan-400 mt-1 uppercase tracking-wider font-semibold">{user?.role}</p>
+                  <p className="text-sm font-bold text-white">{user?.name}</p>
+                  <p className="text-xs text-slate-400">{user?.role}</p>
                 </div>
-                <div className="relative p-0.5 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 p-[2px]">
                   <img 
-                    src={getProfileImage()} 
+                    src={user?.profileImage || `https://ui-avatars.com/api/?name=${user?.name || 'U'}&background=0f172a&color=38bdf8`} 
                     alt="Profile" 
-                    className="w-10 h-10 rounded-full object-cover border-2 border-slate-900"
+                    className="h-full w-full rounded-full object-cover border-2 border-slate-950"
                   />
                 </div>
               </div>
             </div>
-          </nav>
+          </header>
 
-          <main className="p-4 lg:p-8 max-w-7xl mx-auto w-full">
+          {/* SCROLLABLE AREA - "no-scrollbar" class applied here */}
+          <main className="flex-1 overflow-y-auto no-scrollbar p-4 lg:p-8 space-y-8">
+            
+            {/* HERO CARD */}
             <motion.div 
-              initial="hidden"
-              animate="visible"
-              variants={containerVariants}
-              className="space-y-8"
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+              className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-white/10 p-8 shadow-2xl group"
             >
+              <div className="relative z-10">
+                <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">
+                  {getGreeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">{user?.name?.split(' ')[0]}</span>
+                </h1>
+                <p className="text-slate-400 max-w-xl">
+                  {user?.role === 'Student' 
+                    ? "Track your applications, connect with mentors, and skill up for your dream job."
+                    : "Connect with students, share opportunities, and grow the alumni network."}
+                </p>
+              </div>
+              <div className="absolute right-0 top-0 w-64 h-64 bg-cyan-500/10 blur-[80px] rounded-full group-hover:bg-cyan-500/20 transition-all duration-1000"></div>
+            </motion.div>
+
+            {/* STATS GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {stats.map((stat, idx) => (
+                <StatCard key={idx} {...stat} onClick={() => navigate(stat.link)} delay={idx * 0.1} />
+              ))}
+            </div>
+
+            {/* BOTTOM SECTION */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               
-              {/* 4. WELCOME BANNER */}
-              <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-cyan-900/40 via-blue-900/40 to-slate-900/40 border border-white/10 p-8 lg:p-10 shadow-2xl group">
-                <div className="relative z-10">
-                  <h1 className="text-3xl lg:text-4xl font-extrabold text-white mb-3">
-                    Hello, {user?.name?.split(' ')[0]}! <span className="text-cyan-400">👋</span>
-                  </h1>
-                  <p className="text-lg text-slate-300 max-w-2xl leading-relaxed">
-                    {user?.role === 'Student' 
-                      ? "Your future awaits. Explore internships, connect with alumni, and track your application status all in one place."
-                      : "Welcome back to the network. Connect with aspiring students and share your valuable industry experience."}
-                  </p>
+              {/* Recent Activity */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+                className="lg:col-span-2 bg-slate-900/40 backdrop-blur-md border border-white/5 rounded-3xl p-6"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Activity size={20} className="text-cyan-400" /> Recent Updates
+                  </h3>
+                  <button className="text-xs text-cyan-400 hover:text-cyan-300 font-medium">View All</button>
                 </div>
                 
-                {/* Decorative Elements */}
-                <div className="absolute right-0 top-0 w-64 h-64 bg-cyan-500/10 blur-[80px] rounded-full pointer-events-none group-hover:bg-cyan-500/20 transition-all duration-700"></div>
-                <div className="absolute -left-10 -bottom-10 w-48 h-48 bg-blue-600/10 blur-[60px] rounded-full pointer-events-none"></div>
-              </motion.div>
-
-              {/* 5. STATS GRID */}
-              <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard 
-                  label={stats.card1.label} 
-                  value={stats.card1.value} 
-                  icon={<Briefcase size={24} />} 
-                  color="text-cyan-400" 
-                  bg="bg-cyan-500/10 border-cyan-500/20"
-                />
-                <StatCard 
-                  label={stats.card2.label} 
-                  value={stats.card2.value} 
-                  icon={<Users size={24} />} 
-                  color="text-amber-400" 
-                  bg="bg-amber-500/10 border-amber-500/20"
-                />
-                <StatCard 
-                  label={stats.card3.label} 
-                  value={stats.card3.value} 
-                  icon={<Calendar size={24} />} 
-                  color="text-emerald-400" 
-                  bg="bg-emerald-500/10 border-emerald-500/20"
-                />
-                <StatCard 
-                  label="Status" 
-                  value="Active" 
-                  icon={<Activity size={24} />} 
-                  color="text-white" 
-                  bg="bg-gradient-to-br from-green-500/20 to-emerald-600/20 border-emerald-500/30"
-                  isText
-                />
-              </motion.div>
-
-              {/* 6. RECENT ACTIVITY SECTION */}
-              <motion.div variants={itemVariants}>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <TrendingUp className="text-cyan-400" size={20}/> Recent Activity
-                  </h3>
-                  <button className="text-xs text-slate-400 hover:text-white transition-colors">View History</button>
-                </div>
-
-                <div className="min-h-[250px] flex flex-col items-center justify-center rounded-2xl bg-white/5 border border-white/10 border-dashed backdrop-blur-sm group hover:border-cyan-500/30 transition-colors cursor-default">
-                  <div className="p-4 rounded-full bg-slate-800/50 mb-4 group-hover:scale-110 transition-transform duration-300">
-                    <Activity size={32} className="text-slate-600 group-hover:text-cyan-400 transition-colors" />
-                  </div>
-                  <p className="text-slate-400 font-medium">No recent activity detected.</p>
-                  <p className="text-slate-600 text-sm mt-1">Start by exploring Jobs or Mentorships.</p>
-                  
-                  <button 
-                    onClick={() => navigate(user?.role === 'Student' ? '/jobs' : '/mentorship')}
-                    className="mt-6 px-6 py-2 rounded-full bg-white/10 hover:bg-cyan-500 hover:text-slate-900 border border-white/10 text-sm font-semibold transition-all flex items-center gap-2"
-                  >
-                    Explore Now <ChevronRight size={14} />
-                  </button>
+                <div className="space-y-4">
+                  {loading ? (
+                    <p className="text-slate-500 text-center py-4">Syncing...</p>
+                  ) : recentActivity.length > 0 ? (
+                    recentActivity.map((item, i) => (
+                      <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all cursor-pointer group">
+                        <div className={`p-3 rounded-xl ${item.bg} ${item.color}`}>
+                          <item.icon size={20} />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-white font-medium group-hover:text-cyan-400 transition-colors">{item.title}</h4>
+                          <p className="text-xs text-slate-500">{item.type} • {item.time}</p>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-600 group-hover:text-white transition-colors" />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-10 text-slate-500">
+                      <Clock className="mx-auto mb-2 opacity-50" />
+                      <p>No recent activity found.</p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
 
-            </motion.div>
+              {/* Quick Actions */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+                className="space-y-4"
+              >
+                <h3 className="text-xl font-bold text-white flex items-center gap-2 px-2">
+                  <Zap size={20} className="text-amber-400" /> Quick Actions
+                </h3>
+                <ActionButton label="Find a Mentor" desc="Get guidance" icon={Users} color="text-purple-400" onClick={() => navigate('/mentorship')} />
+                <ActionButton label="Explore Jobs" desc="Apply now" icon={Briefcase} color="text-blue-400" onClick={() => navigate('/jobs')} />
+                <ActionButton label="Upcoming Events" desc="Register" icon={Calendar} color="text-emerald-400" onClick={() => navigate('/events')} />
+              </motion.div>
+
+            </div>
           </main>
         </div>
       </div>
@@ -252,27 +277,47 @@ const Dashboard = () => {
   );
 };
 
-// --- REUSABLE COMPONENT ---
+// --- SUB-COMPONENTS ---
 
-const StatCard = ({ label, value, icon, color, bg, isText }) => (
-  <motion.div 
-    whileHover={{ y: -5, boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}
-    className={`p-6 rounded-2xl border backdrop-blur-md flex flex-col justify-between h-32 transition-all ${bg}`}
+const StatCard = ({ title, value, icon: Icon, color, gradient, border, onClick, delay }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay }}
+    onClick={onClick}
+    whileHover={{ y: -5, scale: 1.02 }}
+    className={`relative overflow-hidden p-6 rounded-3xl bg-gradient-to-br ${gradient} border ${border} backdrop-blur-xl cursor-pointer group`}
   >
-    <div className="flex justify-between items-start">
-      <div className="flex flex-col">
-        <span className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">{label}</span>
-        {isText ? (
-           <span className={`text-2xl font-bold ${color}`}>{value}</span>
-        ) : (
-           <span className={`text-4xl font-extrabold text-white`}>{value}</span>
-        )}
+    <div className="relative z-10 flex justify-between items-start">
+      <div>
+        <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">{title}</p>
+        <h3 className="text-4xl font-black text-white">{value}</h3>
       </div>
-      <div className={`p-2 rounded-lg bg-slate-950/30 ${color}`}>
-        {icon}
+      <div className={`p-3 rounded-2xl bg-slate-950/30 ${color} shadow-lg`}>
+        <Icon size={24} />
       </div>
     </div>
+    {/* Decorative Glow */}
+    <div className={`absolute -bottom-4 -right-4 w-24 h-24 bg-current opacity-10 blur-2xl rounded-full ${color}`}></div>
   </motion.div>
+);
+
+const ActionButton = ({ label, desc, icon: Icon, color, onClick }) => (
+  <motion.button
+    whileHover={{ scale: 1.02, x: 5 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={onClick}
+    className="w-full flex items-center gap-4 p-4 rounded-2xl bg-slate-900/60 border border-white/5 hover:border-white/10 hover:bg-slate-800/80 transition-all text-left group shadow-lg"
+  >
+    <div className={`p-3 rounded-xl bg-slate-950 ${color} border border-white/5 group-hover:scale-110 transition-transform`}>
+      <Icon size={20} />
+    </div>
+    <div className="flex-1">
+      <h4 className="text-slate-200 font-semibold group-hover:text-white">{label}</h4>
+      <p className="text-xs text-slate-500">{desc}</p>
+    </div>
+    <ChevronRight size={18} className="text-slate-600 group-hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-all" />
+  </motion.button>
 );
 
 export default Dashboard;

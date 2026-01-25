@@ -14,5 +14,6 @@ router.get('/all', auth, getAllEvents);
 router.get('/:id', auth, getEventById);     // Get details
 router.put('/rsvp/:id', auth, rsvpEvent);   // The toggle route
 router.delete('/:id', auth, deleteEvent);
+router.get('/', getAllEvents);
 
 module.exports = router;

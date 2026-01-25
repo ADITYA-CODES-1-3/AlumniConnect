@@ -76,3 +76,14 @@ exports.removeConnection = async (req, res) => {
         res.status(500).json({ message: "Server Error" });
     }
 };
+
+exports.getAllMentors = async (req, res) => {
+    try {
+        // Find all users with role 'Alumni' and exclude their password
+        const mentors = await User.find({ role: 'Alumni' }).select('-password');
+        res.status(200).json({ success: true, data: mentors });
+    } catch (error) {
+        console.error("Error fetching mentors:", error);
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+};
